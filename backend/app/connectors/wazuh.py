@@ -8,6 +8,14 @@ from app.models.alert import (
 )
 
 
+def _as_list(value: object) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(item) for item in value]
+    return [str(value)]
+
+
 def severity_from_wazuh_level(level: int) -> tuple[str, int]:
     score = min(100, max(0, round((level / 15) * 100)))
     if score >= 75:
@@ -35,8 +43,9 @@ def normalize_wazuh_alert(raw: dict) -> NormalizedAlert:
         severity_score=score,
         rule=RuleContext(
             id=str(rule.get("id", "")),
+            name=str(rule.get("description", "")),
             description=str(rule.get("description", "")),
-            groups=list(rule.get("groups", []) or []),
+            groups=_as_list(rule.get("groups")),
         ),
         asset=AssetContext(
             id=str(agent.get("id", "")),
@@ -47,10 +56,21 @@ def normalize_wazuh_alert(raw: dict) -> NormalizedAlert:
         network=NetworkContext(
             src_ip=str(data.get("srcip") or data.get("src_ip") or ""),
             dst_ip=str(data.get("dstip") or data.get("dst_ip") or ""),
+            src_port=int(data["srcport"]) if str(data.get("srcport", "")).isdigit() else None,
+            dst_port=int(data["dstport"]) if str(data.get("dstport", "")).isdigit() else None,
         ),
         mitre=MitreContext(
-            tactics=list(mitre.get("tactic", []) or []),
-            techniques=list(mitre.get("id", []) or []),
+            tactics=_as_list(mitre.get("tactic")),
+            techniques=_as_list(mitre.get("id")),
         ),
         raw_event=raw,
     )
+
+
+def normalize_wazuh_hits(response: dict) -> list[NormalizedAlert]:
+    alerts: list[NormalizedAlert] = []
+    for hit in response.get("hits", {}).get("hits", []):
+        source = hit.get("_source", hit)
+        if isinstance(source, dict):
+            alerts.append(normalize_wazuh_alert(source))
+    return alerts
