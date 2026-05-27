@@ -9,21 +9,123 @@
   <body>
     <main>
       <section class="hero">
-        <p class="kicker">7 Day MVP Build</p>
+        <div class="hero-meta">
+          <p class="kicker">7 Day MVP Build</p>
+          <span class="live-pill">Day 1 active</span>
+        </div>
         <h1>AI SOC SOAR Automation Layer</h1>
         <p class="lede">
           Wazuh-first, SIEM-agnostic platform that reduces alert noise, explains cyber attacks,
           and triggers analyst-approved open-source SOAR workflows.
         </p>
       </section>
-      <section class="timeline">
-        <article class="done"><span>Day 1</span><h2>Foundation</h2><p>Project setup, architecture, schemas, sample alerts, Codex skills.</p></article>
-        <article><span>Day 2</span><h2>Ingestion</h2><p>Wazuh/OpenSearch connector and demo alert loader.</p></article>
-        <article><span>Day 3</span><h2>AI Triage</h2><p>LLM verdicts, confidence, evidence, and recommendations.</p></article>
-        <article><span>Day 4</span><h2>Incidents</h2><p>Grouping, risk scoring, analyst feedback, audit trail.</p></article>
-        <article><span>Day 5</span><h2>SOAR</h2><p>n8n/Shuffle webhook triggers and Slack workflow.</p></article>
-        <article><span>Day 6</span><h2>Dashboard</h2><p>React SOC UI with alert and incident workflows.</p></article>
-        <article><span>Day 7</span><h2>Demo</h2><p>Security review, polish, deployment, and pitch metrics.</p></article>
+
+      <section class="status-strip" aria-label="Parallel workstreams">
+        <div><span>Backend</span><strong>FastAPI core</strong></div>
+        <div><span>AI Agent</span><strong>Triage JSON</strong></div>
+        <div><span>SOAR</span><strong>n8n/Shuffle</strong></div>
+        <div><span>UI</span><strong>SOC console</strong></div>
+        <div><span>Proof</span><strong>Demo metrics</strong></div>
+      </section>
+
+      <section class="progress-board" aria-label="Day-wise MVP progress">
+        <article class="day-card done">
+          <div class="day-head">
+            <span>Day 1</span>
+            <strong>Complete</strong>
+          </div>
+          <h2>Foundation</h2>
+          <p>Project setup, public repo, architecture, schemas, sample alerts, and Codex skills.</p>
+          <ul>
+            <li>Repo and Pages workflow</li>
+            <li>Normalized alert contract</li>
+            <li>Wazuh fixture and connector skeleton</li>
+          </ul>
+        </article>
+
+        <article class="day-card current">
+          <div class="day-head">
+            <span>Day 2</span>
+            <strong>Next</strong>
+          </div>
+          <h2>Ingestion</h2>
+          <p>Build Wazuh/OpenSearch ingestion plus a demo loader that works without live SIEM access.</p>
+          <ul>
+            <li>Sample alert import API</li>
+            <li>OpenSearch pull connector</li>
+            <li>Raw-to-normalized preview</li>
+          </ul>
+        </article>
+
+        <article class="day-card">
+          <div class="day-head">
+            <span>Day 3</span>
+            <strong>Planned</strong>
+          </div>
+          <h2>AI Triage</h2>
+          <p>Generate structured verdicts with confidence, evidence, MITRE context, and recommendations.</p>
+          <ul>
+            <li>Prompt-injection guardrails</li>
+            <li>LLM provider adapter</li>
+            <li>Decision audit records</li>
+          </ul>
+        </article>
+
+        <article class="day-card">
+          <div class="day-head">
+            <span>Day 4</span>
+            <strong>Planned</strong>
+          </div>
+          <h2>Incidents</h2>
+          <p>Group related alerts into analyst-ready incidents and track feedback for noise reduction.</p>
+          <ul>
+            <li>Correlation keys</li>
+            <li>Risk scoring</li>
+            <li>Correct/incorrect feedback</li>
+          </ul>
+        </article>
+
+        <article class="day-card">
+          <div class="day-head">
+            <span>Day 5</span>
+            <strong>Planned</strong>
+          </div>
+          <h2>SOAR</h2>
+          <p>Trigger approval-gated n8n or Shuffle workflows for Slack, tickets, and response placeholders.</p>
+          <ul>
+            <li>Webhook dispatch</li>
+            <li>Slack notification</li>
+            <li>Action audit log</li>
+          </ul>
+        </article>
+
+        <article class="day-card">
+          <div class="day-head">
+            <span>Day 6</span>
+            <strong>Planned</strong>
+          </div>
+          <h2>Dashboard</h2>
+          <p>Build the SOC operator console for alert review, incident details, and SOAR approval.</p>
+          <ul>
+            <li>Overview metrics</li>
+            <li>Alert and incident views</li>
+            <li>Approval controls</li>
+          </ul>
+        </article>
+
+        <article class="day-card">
+          <div class="day-head">
+            <span>Day 7</span>
+            <strong>Planned</strong>
+          </div>
+          <h2>Demo</h2>
+          <p>Polish the demo path, run a security review, and prepare the investor/hackathon story.</p>
+          <ul>
+            <li>Security pass</li>
+            <li>Before/after metrics</li>
+            <li>Pitch-ready workflow</li>
+          </ul>
+        </article>
       </section>
     </main>
   </body>
