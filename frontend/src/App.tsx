@@ -13,44 +13,7 @@ type TriageDecision = {
   from_cache: boolean;
 };
 
-const decisions: TriageDecision[] = [
-  {
-    alert_id: "demo-001",
-    verdict: "suspicious",
-    confidence: 0.78,
-    risk_score: 72,
-    attack_summary: "Authentication activity looks suspicious and needs validation.",
-    soar_recommendation: "request_approval_then_soar_containment",
-    from_cache: true,
-  },
-  {
-    alert_id: "demo-002",
-    verdict: "true_positive",
-    confidence: 0.9,
-    risk_score: 88,
-    attack_summary: "Potential malware behavior detected on endpoint.",
-    soar_recommendation: "request_approval_then_soar_containment",
-    from_cache: false,
-  },
-  {
-    alert_id: "demo-003",
-    verdict: "suspicious",
-    confidence: 0.78,
-    risk_score: 72,
-    attack_summary: "Authentication activity looks suspicious and needs validation.",
-    soar_recommendation: "request_approval_then_soar_containment",
-    from_cache: false,
-  },
-  {
-    alert_id: "demo-004",
-    verdict: "low_priority",
-    confidence: 0.71,
-    risk_score: 45,
-    attack_summary: "Network scanning pattern observed with moderate risk.",
-    soar_recommendation: "notify_slack_only",
-    from_cache: false,
-  },
-];
+type BatchResponse = { decisions: TriageDecision[] };
 
 const verdictClass: Record<TriageDecision["verdict"], string> = {
   false_positive: "sev-low",
@@ -61,6 +24,14 @@ const verdictClass: Record<TriageDecision["verdict"], string> = {
 };
 
 function App() {
+  const [decisions, setDecisions] = React.useState<TriageDecision[]>([]);
+  const [loading, setLoading] = React.useState(true);
+  React.useEffect(() => {
+    fetch("http://localhost:8000/triage/sample")
+      .then((r) => r.json())
+      .then((data: BatchResponse) => setDecisions(data.decisions || []))
+      .finally(() => setLoading(false));
+  }, []);
   return (
     <main className="app-shell">
       <aside className="sidebar">
@@ -94,7 +65,7 @@ function App() {
           <div className="pipeline">
             <article><strong>Structured JSON</strong><span>`/triage/alert` returns verdict, confidence, risk, evidence, and SOAR recommendation.</span></article>
             <article><strong>Batch Endpoint</strong><span>`/triage/sample` triages normalized Wazuh fixtures in one request.</span></article>
-            <article><strong>Low-token cache</strong><span>Repeated alert signatures reuse decisions to reduce token usage.</span></article>
+            <article><strong>Persistent backend</strong><span>SQLite runtime store keeps alerts and triage decisions across restarts.</span></article>
             <article><strong>Prompt-safe behavior</strong><span>Heuristic path treats log fields as untrusted input and stays approval-gated.</span></article>
             <article><strong>Next</strong><span>Day 5 incident grouping and noise reduction metrics.</span></article>
           </div>
@@ -113,7 +84,7 @@ function App() {
               <span>Risk</span>
               <span>SOAR</span>
             </div>
-            {decisions.map((decision) => (
+            {loading ? <article className="alert-row"><span>Loading triage decisions...</span><span>-</span><span>-</span><span>-</span><span>-</span></article> : decisions.map((decision) => (
               <article className="alert-row" key={decision.alert_id}>
                 <span><strong>{decision.alert_id}</strong>{decision.attack_summary}</span>
                 <span className={`severity ${verdictClass[decision.verdict]}`}>{decision.verdict}</span>

@@ -1,6 +1,8 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.connectors.opensearch import fetch_recent_wazuh_alerts, opensearch_configured
+from app.db.sqlite_store import init_db, list_alerts, upsert_alert, upsert_triage
 from app.connectors.wazuh import normalize_wazuh_alert, normalize_wazuh_hits
 from app.models.triage import TriageBatchResponse, TriageRequest
 from app.services.alert_store import load_normalized_sample_alerts, summarize_alerts
@@ -11,6 +13,17 @@ app = FastAPI(
     description="Wazuh-first, SIEM-agnostic AI SOC automation backend",
     version="0.1.0",
 )
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.on_event("startup")
+def startup() -> None:
+    init_db()
 
 
 @app.get("/health")
@@ -85,18 +98,27 @@ def sample_alerts() -> dict:
 
 @app.get("/alerts/normalized")
 def normalized_alerts() -> list[dict]:
-    return [alert.model_dump() for alert in load_normalized_sample_alerts()]
+    alerts = list_alerts(limit=200)
+    if not alerts:
+        alerts = load_normalized_sample_alerts()
+        for alert in alerts:
+            upsert_alert(alert)
+    return [alert.model_dump() for alert in alerts]
 
 
 @app.post("/alerts/normalize")
 def normalize_alert(raw_alert: dict) -> dict:
-    return normalize_wazuh_alert(raw_alert).model_dump()
+    normalized = normalize_wazuh_alert(raw_alert)
+    upsert_alert(normalized)
+    return normalized.model_dump()
 
 
 @app.get("/alerts/wazuh/recent")
 async def recent_wazuh_alerts(limit: int = 25) -> dict:
     response = await fetch_recent_wazuh_alerts(limit=limit)
     alerts = normalize_wazuh_hits(response)
+    for alert in alerts:
+        upsert_alert(alert)
     return {
         "summary": summarize_alerts(alerts),
         "alerts": [alert.model_dump() for alert in alerts],
@@ -105,7 +127,10 @@ async def recent_wazuh_alerts(limit: int = 25) -> dict:
 
 @app.post("/triage/alert")
 def triage_single_alert(request: TriageRequest) -> dict:
-    return triage_alert(request.alert, force_refresh=request.force_refresh).model_dump()
+    decision = triage_alert(request.alert, force_refresh=request.force_refresh)
+    upsert_alert(request.alert)
+    upsert_triage(decision)
+    return decision.model_dump()
 
 
 @app.get("/triage/sample")
