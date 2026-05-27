@@ -1,6 +1,7 @@
 import os
 import time
 from datetime import datetime, timezone
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -17,6 +18,25 @@ from app.models.connectors import (
 from app.services.crypto import decrypt_secret, encrypt_secret
 
 router = APIRouter(prefix="/api/v1/connectors", tags=["connectors"])
+
+
+def _is_valid_url(value: str) -> bool:
+    try:
+        parsed = urlparse(value)
+        return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+    except Exception:
+        return False
+
+
+def _missing_required(row: Connector) -> list[str]:
+    missing: list[str] = []
+    if not row.base_url:
+        missing.append("base_url")
+    if not row.username:
+        missing.append("username")
+    if not row.password_encrypted:
+        missing.append("password")
+    return missing
 
 
 def _to_out(c: Connector) -> ConnectorOut:
@@ -67,8 +87,17 @@ def upsert_connector(
     if not row:
         row = Connector(name=name, connector_type=name)
         db.add(row)
-    row.base_url = payload.base_url.strip()
-    row.username = payload.username.strip()
+    base_url = payload.base_url.strip()
+    username = payload.username.strip()
+    if payload.enabled:
+        if not _is_valid_url(base_url):
+            raise HTTPException(status_code=400, detail="Invalid base_url. Use http(s)://host[:port]")
+        if not username:
+            raise HTTPException(status_code=400, detail="Username is required when connector is enabled")
+        if not payload.password and not row.password_encrypted:
+            raise HTTPException(status_code=400, detail="Password is required for first-time connector enable")
+    row.base_url = base_url
+    row.username = username
     if payload.password:
         row.password_encrypted = encrypt_secret(payload.password)
     row.password_masked = "********" if payload.password else row.password_masked
@@ -183,3 +212,24 @@ def connector_history(
         )
         for c in checks
     ]
+
+
+@router.get("/setup/summary")
+def connector_setup_summary(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "analyst", "viewer")),
+):
+    rows = db.query(Connector).order_by(Connector.id.asc()).all()
+    data = []
+    for row in rows:
+        missing = _missing_required(row) if row.enabled else []
+        data.append(
+            {
+                "name": row.name,
+                "enabled": row.enabled,
+                "last_status": row.last_status,
+                "missing_required_fields": missing,
+                "ready": row.enabled and len(missing) == 0,
+            }
+        )
+    return {"connectors": data}

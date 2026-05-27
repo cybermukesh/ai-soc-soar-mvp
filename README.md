@@ -9,10 +9,10 @@ Convert noisy SIEM alerts into prioritized, explainable incidents and trigger an
 ## Current Build Status
 
 - Day 1: Complete - market strategy, pain-point research, competitor scan, and MVP narrowing.
-- Day 2: Complete - product plan, architecture, stack, Codex skills, build sequence, and repo setup.
-- Day 3: Complete - Wazuh sample fixtures, OpenSearch-ready connector, alert normalization API, and dashboard preview.
-- Day 4: Complete - low-token AI triage endpoints, structured JSON decisions, confidence/risk scoring, and cache-aware response.
-- Day 5: Next - incident grouping and noise-reduction metrics.
+- Day 2: Complete - product plan plus backend foundation (DB/session, auth, JWT, RBAC, admin APIs, audit logs).
+- Day 3: Complete - connector layer (persisted connector configs, health checks, encrypted secret path, connector history, connector UI).
+- Day 4: Complete - triage + incident core (triage endpoints, incident schema, incident APIs, incident dashboard actions, RBAC on operations).
+- Day 5: In progress - incident grouping logic, timeline UX depth, and reduction metrics.
 
 ## Core Flow
 

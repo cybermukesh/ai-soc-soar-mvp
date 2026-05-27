@@ -22,3 +22,12 @@ class IncidentOut(BaseModel):
 class IncidentStatusUpdateRequest(BaseModel):
     status: str
     note: str = ""
+
+
+class IncidentEventOut(BaseModel):
+    id: int
+    incident_id: int
+    event_type: str
+    detail: str
+    actor_user_id: int
+    created_at: str

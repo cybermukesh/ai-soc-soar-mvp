@@ -10,6 +10,7 @@ type AuditLog = { id: number; actor_user_id: number; action: string; target_type
 type Connector = { id: number; name: string; connector_type: string; base_url: string; username: string; password_masked: string; enabled: boolean; last_status: string; last_error: string; last_latency_ms: number; last_checked_at: string };
 type ConnectorHistory = { id: number; connector_id: number; ok: boolean; detail: string; latency_ms: number; checked_by_user_id: number; created_at: string };
 type Incident = { id: number; title: string; severity: string; status: string; risk_score: number; source_tool: string; created_by_user_id: number; created_at: string };
+type IncidentEvent = { id: number; incident_id: number; event_type: string; detail: string; actor_user_id: number; created_at: string };
 type TriageDecision = {
   alert_id: string;
   verdict: "false_positive" | "low_priority" | "suspicious" | "true_positive" | "needs_review";
@@ -48,6 +49,9 @@ function App() {
   const [connectorMsg, setConnectorMsg] = React.useState("");
   const [connectorForm, setConnectorForm] = React.useState({ name: "wazuh", base_url: "", username: "", password: "", enabled: true });
   const [incidents, setIncidents] = React.useState<Incident[]>([]);
+  const [incidentEvents, setIncidentEvents] = React.useState<IncidentEvent[]>([]);
+  const [incidentSelectedId, setIncidentSelectedId] = React.useState<number | null>(null);
+  const [incidentFilter, setIncidentFilter] = React.useState({ q: "", status: "", severity: "" });
   const [incidentForm, setIncidentForm] = React.useState({ title: "", severity: "medium", risk_score: 50, source_tool: "wazuh" });
   const [incidentMsg, setIncidentMsg] = React.useState("");
 
@@ -94,11 +98,15 @@ function App() {
 
   React.useEffect(() => {
     if (!token) return;
-    fetch(`${API}/api/v1/incidents`, { headers: { Authorization: `Bearer ${token}` } })
+    const params = new URLSearchParams();
+    if (incidentFilter.q) params.set("q", incidentFilter.q);
+    if (incidentFilter.status) params.set("status", incidentFilter.status);
+    if (incidentFilter.severity) params.set("severity", incidentFilter.severity);
+    fetch(`${API}/api/v1/incidents?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((data) => setIncidents(Array.isArray(data) ? data : []))
       .catch(() => setIncidents([]));
-  }, [token, incidentMsg]);
+  }, [token, incidentMsg, incidentFilter.q, incidentFilter.status, incidentFilter.severity]);
 
   async function refreshConnectors() {
     if (!token) return;
@@ -158,6 +166,13 @@ function App() {
       body: JSON.stringify({ status, note: `set via dashboard to ${status}` }),
     });
     setIncidentMsg(res.ok ? `Updated incident #${incidentId}` : "Failed to update incident");
+  }
+
+  async function loadIncidentEvents(incidentId: number) {
+    const res = await fetch(`${API}/api/v1/incidents/${incidentId}/events`, { headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json();
+    setIncidentSelectedId(incidentId);
+    setIncidentEvents(Array.isArray(data) ? data : []);
   }
 
   async function login() {
@@ -293,20 +308,44 @@ function App() {
                 <button onClick={createIncident}>Create incident</button>
               </div>
             ) : null}
+            <div className="admin-form">
+              <input placeholder="Search title" value={incidentFilter.q} onChange={(e) => setIncidentFilter({ ...incidentFilter, q: e.target.value })} />
+              <select value={incidentFilter.status} onChange={(e) => setIncidentFilter({ ...incidentFilter, status: e.target.value })}>
+                <option value="">all status</option><option value="open">open</option><option value="investigating">investigating</option><option value="resolved">resolved</option>
+              </select>
+              <select value={incidentFilter.severity} onChange={(e) => setIncidentFilter({ ...incidentFilter, severity: e.target.value })}>
+                <option value="">all severity</option><option value="low">low</option><option value="medium">medium</option><option value="high">high</option><option value="critical">critical</option>
+              </select>
+            </div>
             {incidentMsg ? <p>{incidentMsg}</p> : null}
             <div className="admin-list">
               {incidents.map((i) => (
                 <article className="admin-item" key={i.id}>
                   <span><strong>#{i.id}</strong> {i.title} | sev={i.severity} | status={i.status} | risk={i.risk_score}</span>
-                  {(user.role === "admin" || user.role === "analyst") ? (
-                    <div className="incident-actions">
+                  <div className="incident-actions">
+                    <button onClick={() => loadIncidentEvents(i.id)}>Timeline</button>
+                    {(user.role === "admin" || user.role === "analyst") ? (
+                    <>
                       <button onClick={() => updateIncidentStatus(i.id, "investigating")}>Investigating</button>
                       <button onClick={() => updateIncidentStatus(i.id, "resolved")}>Resolved</button>
-                    </div>
-                  ) : null}
+                    </>
+                    ) : null}
+                  </div>
                 </article>
               ))}
             </div>
+            {incidentSelectedId ? (
+              <>
+                <h3>Incident Timeline #{incidentSelectedId}</h3>
+                <div className="admin-list">
+                  {incidentEvents.map((e) => (
+                    <article className="admin-item" key={e.id}>
+                      <span>{e.event_type} - {e.detail} - user {e.actor_user_id} - {e.created_at}</span>
+                    </article>
+                  ))}
+                </div>
+              </>
+            ) : null}
           </section>
         ) : null}
 

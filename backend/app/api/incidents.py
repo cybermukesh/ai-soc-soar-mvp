@@ -4,7 +4,12 @@ from sqlalchemy.orm import Session
 from app.api.auth import require_role
 from app.db.models import AuditLog, Incident, IncidentEvent, User
 from app.db.session import get_db
-from app.models.incidents import IncidentCreateRequest, IncidentOut, IncidentStatusUpdateRequest
+from app.models.incidents import (
+    IncidentCreateRequest,
+    IncidentEventOut,
+    IncidentOut,
+    IncidentStatusUpdateRequest,
+)
 
 router = APIRouter(prefix="/api/v1/incidents", tags=["incidents"])
 
@@ -27,8 +32,21 @@ def _audit(db: Session, user: User, action: str, target_id: str, detail: str = "
 
 
 @router.get("", response_model=list[IncidentOut])
-def list_incidents(db: Session = Depends(get_db), _: User = Depends(require_role("admin", "analyst", "viewer"))):
-    rows = db.query(Incident).order_by(Incident.id.desc()).limit(200).all()
+def list_incidents(
+    q: str | None = None,
+    status: str | None = None,
+    severity: str | None = None,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "analyst", "viewer")),
+):
+    query = db.query(Incident)
+    if q:
+        query = query.filter(Incident.title.ilike(f"%{q}%"))
+    if status:
+        query = query.filter(Incident.status == status)
+    if severity:
+        query = query.filter(Incident.severity == severity)
+    rows = query.order_by(Incident.id.desc()).limit(200).all()
     return [_out(r) for r in rows]
 
 
@@ -71,3 +89,32 @@ def update_incident_status(
     db.commit()
     db.refresh(row)
     return _out(row)
+
+
+@router.get("/{incident_id}/events", response_model=list[IncidentEventOut])
+def list_incident_events(
+    incident_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "analyst", "viewer")),
+):
+    incident = db.query(Incident).filter(Incident.id == incident_id).first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    rows = (
+        db.query(IncidentEvent)
+        .filter(IncidentEvent.incident_id == incident_id)
+        .order_by(IncidentEvent.id.desc())
+        .limit(200)
+        .all()
+    )
+    return [
+        IncidentEventOut(
+            id=r.id,
+            incident_id=r.incident_id,
+            event_type=r.event_type,
+            detail=r.detail,
+            actor_user_id=r.actor_user_id,
+            created_at=r.created_at.isoformat() if r.created_at else "",
+        )
+        for r in rows
+    ]

@@ -116,6 +116,21 @@ def health() -> dict:
     return {"status": "ok"}
 
 
+@app.get("/api/v1/readiness/env")
+def env_readiness(_: Session = Depends(require_role("admin", "analyst", "viewer"))) -> dict:
+    required = {
+        "WAZUH_API_URL": bool(__import__("os").getenv("WAZUH_API_URL")),
+        "WAZUH_API_USER": bool(__import__("os").getenv("WAZUH_API_USER")),
+        "WAZUH_API_PASSWORD": bool(__import__("os").getenv("WAZUH_API_PASSWORD")),
+        "OPENSEARCH_URL": bool(__import__("os").getenv("OPENSEARCH_URL")),
+        "OPENSEARCH_USER": bool(__import__("os").getenv("OPENSEARCH_USER")),
+        "OPENSEARCH_PASSWORD": bool(__import__("os").getenv("OPENSEARCH_PASSWORD")),
+        "N8N_WEBHOOK_URL": bool(__import__("os").getenv("N8N_WEBHOOK_URL")),
+    }
+    missing = [k for k, ok in required.items() if not ok]
+    return {"ready": len(missing) == 0, "missing": missing, "checks": required}
+
+
 @app.get("/")
 def root() -> dict:
     return {
