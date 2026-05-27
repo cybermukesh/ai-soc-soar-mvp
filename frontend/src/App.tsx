@@ -1,8 +1,13 @@
 import React from "react";
-import { Activity, Bot, Database, Server, ShieldAlert, Workflow } from "lucide-react";
+import { Activity, Bot, Plug, ShieldAlert, Users, Workflow } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles/app.css";
 
+const API = "http://localhost:8000";
+
+type User = { id: number; email: string; full_name: string; role: "admin" | "analyst" | "viewer"; is_active: boolean };
+type AuditLog = { id: number; actor_user_id: number; action: string; target_type: string; target_id: string; detail: string; created_at: string };
+type Connector = { id: number; name: string; connector_type: string; base_url: string; username: string; password_masked: string; enabled: boolean; last_status: string; last_error: string; last_latency_ms: number; last_checked_at: string };
 type TriageDecision = {
   alert_id: string;
   verdict: "false_positive" | "low_priority" | "suspicious" | "true_positive" | "needs_review";
@@ -13,8 +18,6 @@ type TriageDecision = {
   from_cache: boolean;
 };
 
-type BatchResponse = { decisions: TriageDecision[] };
-
 const verdictClass: Record<TriageDecision["verdict"], string> = {
   false_positive: "sev-low",
   low_priority: "sev-medium",
@@ -24,77 +27,247 @@ const verdictClass: Record<TriageDecision["verdict"], string> = {
 };
 
 function App() {
+  const [token, setToken] = React.useState<string>(localStorage.getItem("token") || "");
+  const [user, setUser] = React.useState<User | null>(null);
+  const [email, setEmail] = React.useState("admin@aisocmvp.com");
+  const [password, setPassword] = React.useState("admin123");
+  const [error, setError] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+  const [tab, setTab] = React.useState<"overview" | "connectors" | "triage" | "automation" | "admin">("overview");
   const [decisions, setDecisions] = React.useState<TriageDecision[]>([]);
-  const [loading, setLoading] = React.useState(true);
+
+  const [newUser, setNewUser] = React.useState({ email: "", full_name: "", password: "", role: "analyst" });
+  const [adminMsg, setAdminMsg] = React.useState("");
+  const [users, setUsers] = React.useState<User[]>([]);
+  const [auditLogs, setAuditLogs] = React.useState<AuditLog[]>([]);
+  const [connectors, setConnectors] = React.useState<Connector[]>([]);
+  const [connectorMsg, setConnectorMsg] = React.useState("");
+  const [connectorForm, setConnectorForm] = React.useState({ name: "wazuh", base_url: "", username: "", password: "", enabled: true });
+
   React.useEffect(() => {
-    fetch("http://localhost:8000/triage/sample")
+    if (!token) return;
+    fetch(`${API}/api/v1/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Session expired"))))
+      .then((data: User) => setUser(data))
+      .catch(() => {
+        localStorage.removeItem("token");
+        setToken("");
+        setUser(null);
+      });
+  }, [token]);
+
+  React.useEffect(() => {
+    if (!token) return;
+    fetch(`${API}/triage/sample`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
-      .then((data: BatchResponse) => setDecisions(data.decisions || []))
-      .finally(() => setLoading(false));
-  }, []);
+      .then((data) => setDecisions(data.decisions || []))
+      .catch(() => setDecisions([]));
+  }, [token]);
+
+  React.useEffect(() => {
+    if (!token || user?.role !== "admin") return;
+    fetch(`${API}/api/v1/auth/users`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => setUsers(Array.isArray(data) ? data : []));
+    fetch(`${API}/api/v1/auth/audit-logs`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => setAuditLogs(Array.isArray(data) ? data : []));
+  }, [token, user?.role, adminMsg]);
+
+  React.useEffect(() => {
+    if (!token) return;
+    fetch(`${API}/api/v1/connectors`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => setConnectors(Array.isArray(data) ? data : []));
+  }, [token, adminMsg]);
+
+  async function refreshConnectors() {
+    if (!token) return;
+    const res = await fetch(`${API}/api/v1/connectors`, { headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json();
+    setConnectors(Array.isArray(data) ? data : []);
+  }
+
+  async function checkConnectorHealth(name: string) {
+    const res = await fetch(`${API}/api/v1/connectors/${name}/health`, { headers: { Authorization: `Bearer ${token}` } });
+    const data = await res.json();
+    setConnectorMsg(`${name}: ${data.detail}`);
+    refreshConnectors();
+  }
+
+  async function saveConnector() {
+    const res = await fetch(`${API}/api/v1/connectors/${connectorForm.name}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ base_url: connectorForm.base_url, username: connectorForm.username, password: connectorForm.password, enabled: connectorForm.enabled }),
+    });
+    const data = await res.json();
+    setConnectorMsg(res.ok ? `Saved ${data.name}` : `Failed: ${data.detail || "error"}`);
+    refreshConnectors();
+  }
+
+  async function seedConnectorsFromEnv() {
+    const res = await fetch(`${API}/api/v1/connectors/seed-defaults`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setConnectorMsg(res.ok ? "Seeded connectors from env" : "Failed to seed from env");
+    refreshConnectors();
+  }
+
+  async function login() {
+    setLoading(true);
+    setError("");
+    const res = await fetch(`${API}/api/v1/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.detail || "Login failed");
+      setLoading(false);
+      return;
+    }
+    localStorage.setItem("token", data.access_token);
+    setToken(data.access_token);
+    setLoading(false);
+  }
+
+  async function createUser() {
+    setAdminMsg("");
+    const res = await fetch(`${API}/api/v1/auth/users`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(newUser),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setAdminMsg(`Failed: ${data.detail || "error"}`);
+      return;
+    }
+    setAdminMsg(`Created user: ${data.email} (${data.role})`);
+    setNewUser({ email: "", full_name: "", password: "", role: "analyst" });
+  }
+
+  async function toggleActive(userId: number, isActive: boolean) {
+    const res = await fetch(`${API}/api/v1/auth/users/${userId}/active`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ is_active: !isActive }),
+    });
+    if (res.ok) setAdminMsg(`Updated user ${userId}`);
+  }
+
+  if (!token || !user) {
+    return (
+      <main className="login-shell">
+        <section className="login-card">
+          <h1>AI SOC SOAR Login</h1>
+          <p>Phase-1 Auth + RBAC enabled</p>
+          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
+          <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" type="password" />
+          {error ? <span className="error">{error}</span> : null}
+          <button onClick={login} disabled={loading}>{loading ? "Signing in..." : "Sign in"}</button>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="app-shell">
       <aside className="sidebar">
         <div className="brand">AI SOC</div>
-        <button className="nav-item active"><Activity size={18} /> Overview</button>
-        <button className="nav-item"><ShieldAlert size={18} /> Wazuh Alerts</button>
-        <button className="nav-item"><Bot size={18} /> AI Triage</button>
-        <button className="nav-item"><Workflow size={18} /> Automation</button>
+        <button className={`nav-item ${tab === "overview" ? "active" : ""}`} onClick={() => setTab("overview")}><Activity size={18} /> Overview</button>
+        <button className={`nav-item ${tab === "triage" ? "active" : ""}`} onClick={() => setTab("triage")}><ShieldAlert size={18} /> AI Triage</button>
+        <button className={`nav-item ${tab === "automation" ? "active" : ""}`} onClick={() => setTab("automation")}><Workflow size={18} /> Automation</button>
+        {user.role === "admin" ? <button className={`nav-item ${tab === "admin" ? "active" : ""}`} onClick={() => setTab("admin")}><Users size={18} /> Admin</button> : null}
+        <button className="nav-item" onClick={() => { localStorage.removeItem("token"); setToken(""); setUser(null); }}><Bot size={18} /> Logout</button>
       </aside>
       <section className="workspace">
         <header className="topbar">
-          <div>
-            <p className="eyebrow">Day 4 complete - Day 5 next</p>
-            <h1>AI SOC SOAR Command Center</h1>
-          </div>
-          <span className="status-pill">Low-token triage ready</span>
+          <div><p className="eyebrow">Authenticated Session</p><h1>AI SOC SOAR Command Center</h1></div>
+          <span className="status-pill">{user.full_name} - {user.role}</span>
         </header>
 
-        <section className="metric-grid">
-          <article className="metric"><span>Triage decisions</span><strong>{decisions.length}</strong></article>
-          <article className="metric"><span>Suspicious/TP</span><strong>{decisions.filter((d) => d.verdict === "suspicious" || d.verdict === "true_positive").length}</strong></article>
-          <article className="metric"><span>Cache hits</span><strong>{decisions.filter((d) => d.from_cache).length}</strong></article>
-          <article className="metric"><span>Next build</span><strong>Incidents</strong></article>
-        </section>
-
-        <section className="panel">
-          <div className="panel-title">
-            <Server size={18} />
-            <h2>Day 4 Proof</h2>
-          </div>
-          <div className="pipeline">
-            <article><strong>Structured JSON</strong><span>`/triage/alert` returns verdict, confidence, risk, evidence, and SOAR recommendation.</span></article>
-            <article><strong>Batch Endpoint</strong><span>`/triage/sample` triages normalized Wazuh fixtures in one request.</span></article>
-            <article><strong>Persistent backend</strong><span>SQLite runtime store keeps alerts and triage decisions across restarts.</span></article>
-            <article><strong>Prompt-safe behavior</strong><span>Heuristic path treats log fields as untrusted input and stays approval-gated.</span></article>
-            <article><strong>Next</strong><span>Day 5 incident grouping and noise reduction metrics.</span></article>
-          </div>
-        </section>
-
-        <section className="panel">
-          <div className="panel-title">
-            <Database size={18} />
-            <h2>Triage Decisions</h2>
-          </div>
-          <div className="alert-table">
-            <div className="table-head">
-              <span>Alert</span>
-              <span>Verdict</span>
-              <span>Confidence</span>
-              <span>Risk</span>
-              <span>SOAR</span>
+        {tab === "overview" ? <section className="panel"><h2>Platform Status</h2><p>Backend API, JWT auth, RBAC roles, and triage endpoints are active.</p></section> : null}
+        {tab === "connectors" ? (
+          <section className="panel">
+            <h2>Connector Health</h2>
+            {user.role === "admin" ? <div className="admin-form">
+              <select value={connectorForm.name} onChange={(e) => setConnectorForm({ ...connectorForm, name: e.target.value })}><option value="wazuh">wazuh</option><option value="opensearch">opensearch</option></select>
+              <input placeholder="Base URL" value={connectorForm.base_url} onChange={(e) => setConnectorForm({ ...connectorForm, base_url: e.target.value })} />
+              <input placeholder="Username" value={connectorForm.username} onChange={(e) => setConnectorForm({ ...connectorForm, username: e.target.value })} />
+              <input placeholder="Password" type="password" value={connectorForm.password} onChange={(e) => setConnectorForm({ ...connectorForm, password: e.target.value })} />
+              <button onClick={saveConnector}>Save connector</button>
+              <button onClick={seedConnectorsFromEnv}>Seed from env</button>
+            </div> : null}
+            {connectorMsg ? <p>{connectorMsg}</p> : null}
+            <div className="admin-list">
+              {connectors.map((c) => (
+                <article key={c.id} className="admin-item">
+                  <span><strong>{c.name}</strong> {c.base_url || "not set"} | {c.last_status}{c.last_error ? ` (${c.last_error})` : ""} | latency: {c.last_latency_ms}ms | checked: {c.last_checked_at || "-"}</span>
+                  <button onClick={() => checkConnectorHealth(c.name)}>Check health</button>
+                </article>
+              ))}
             </div>
-            {loading ? <article className="alert-row"><span>Loading triage decisions...</span><span>-</span><span>-</span><span>-</span><span>-</span></article> : decisions.map((decision) => (
-              <article className="alert-row" key={decision.alert_id}>
-                <span><strong>{decision.alert_id}</strong>{decision.attack_summary}</span>
-                <span className={`severity ${verdictClass[decision.verdict]}`}>{decision.verdict}</span>
-                <span>{decision.confidence}</span>
-                <span>{decision.risk_score}</span>
-                <span>{decision.soar_recommendation}{decision.from_cache ? " (cache)" : ""}</span>
-              </article>
-            ))}
-          </div>
-        </section>
+          </section>
+        ) : null}
+
+        {tab === "triage" ? (
+          <section className="panel">
+            <h2>Triage Decisions</h2>
+            <div className="alert-table">
+              <div className="table-head"><span>Alert</span><span>Verdict</span><span>Confidence</span><span>Risk</span><span>SOAR</span></div>
+              {decisions.map((d) => (
+                <article className="alert-row" key={d.alert_id}>
+                  <span><strong>{d.alert_id}</strong>{d.attack_summary}</span>
+                  <span className={`severity ${verdictClass[d.verdict]}`}>{d.verdict}</span>
+                  <span>{d.confidence}</span>
+                  <span>{d.risk_score}</span>
+                  <span>{d.soar_recommendation}{d.from_cache ? " (cache)" : ""}</span>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {tab === "automation" ? <section className="panel"><h2>SOAR Hooks (Day 4 target)</h2><p>Approval-gated n8n/Shuffle execution panel will be enabled in Day 4 build.</p></section> : null}
+
+        {tab === "admin" && user.role === "admin" ? (
+          <section className="panel">
+            <h2>Create User</h2>
+            <div className="admin-form">
+              <input placeholder="Email" value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} />
+              <input placeholder="Full name" value={newUser.full_name} onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })} />
+              <input type="password" placeholder="Password" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} />
+              <select value={newUser.role} onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}>
+                <option value="admin">admin</option>
+                <option value="analyst">analyst</option>
+                <option value="viewer">viewer</option>
+              </select>
+              <button onClick={createUser}>Create user</button>
+            </div>
+            {adminMsg ? <p>{adminMsg}</p> : null}
+            <h3>Users</h3>
+            <div className="admin-list">
+              {users.map((u) => (
+                <article key={u.id} className="admin-item">
+                  <span>{u.email} ({u.role})</span>
+                  <button onClick={() => toggleActive(u.id, u.is_active)}>{u.is_active ? "Deactivate" : "Activate"}</button>
+                </article>
+              ))}
+            </div>
+            <h3>Audit Logs</h3>
+            <div className="admin-list">
+              {auditLogs.slice(0, 20).map((log) => (
+                <article key={log.id} className="admin-item">
+                  <span>#{log.id} {log.action} {log.target_type}:{log.target_id} - {log.detail}</span>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </section>
     </main>
   );
