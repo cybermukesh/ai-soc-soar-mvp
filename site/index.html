@@ -7,41 +7,282 @@
     <link rel="stylesheet" href="style.css">
   </head>
   <body>
-    <main class="shell">
-      <nav class="nav" aria-label="Page sections">
-        <a href="#idea">Idea</a><a href="#pain">Pain</a><a href="#architecture">Architecture</a><a href="#plan">7-Day Plan</a><a href="#cost">Low-token</a>
-      </nav>
-      <header class="hero" id="idea">
-        <div>
-          <p class="kicker">Day 1 complete / Day 2 complete / Day 3 complete / Day 4 next</p>
-          <h1>AI SOC SOAR Automation Layer</h1>
-          <p class="lede">Wazuh-first, SIEM-agnostic AI layer that reduces SOC alert noise, explains cyber attacks for analysts, and triggers approval-gated open-source SOAR workflows.</p>
+    <main class="dashboard-shell">
+      <header class="hero" id="overview">
+        <nav class="top-nav" aria-label="Dashboard sections">
+          <a href="#pain">Pain</a>
+          <a href="#mvp">MVP</a>
+          <a href="#architecture">Architecture</a>
+          <a href="#plan">Build Plan</a>
+          <a href="#cost">Low-token</a>
+        </nav>
+        <div class="hero-grid">
+          <div>
+            <p class="kicker">7 Day MVP Build - Day 1 Complete / Day 2 Complete / Day 3 Complete / Day 4 Complete / Day 5 Next</p>
+            <h1>AI SOC SOAR Automation Layer</h1>
+            <p class="lede">
+              Wazuh-first, SIEM-agnostic AI layer that reduces SOC alert noise,
+              explains cyber attacks for analysts, and triggers approval-gated
+              open-source SOAR workflows.
+            </p>
+          </div>
+          <aside class="status-panel" aria-label="Current build status">
+            <span class="status-label">Current status</span>
+            <strong>AI Triage Complete</strong>
+            <p>Low-token triage endpoints now return structured JSON verdicts with confidence, risk score, evidence, MITRE context, and cache-aware replay. Day 5 moves to incident grouping.</p>
+          </aside>
         </div>
-        <aside class="status-card">
-          <span>Current Status</span>
-          <strong>Wazuh Pipeline Complete</strong>
-          <p>Sample Wazuh alerts, OpenSearch-ready fetch path, normalized alert APIs, and dashboard alert preview are complete. Day 4 adds low-token AI triage verdicts.</p>
-        </aside>
       </header>
-      <section class="metrics" aria-label="MVP summary">
-        <article><span>Target Users</span><strong>SMB SOCs + MSSPs</strong><p>Teams that need automation without enterprise SOAR pricing.</p></article>
-        <article><span>Core Pain</span><strong>Alert fatigue</strong><p>False positives and repeated alerts slow analyst response.</p></article>
-        <article><span>MVP Wedge</span><strong>Wazuh Pipeline</strong><p>Wazuh fixtures, OpenSearch-ready connector, normalized APIs, dashboard preview.</p></article>
-        <article><span>AI Strategy</span><strong>Cheap Cloud</strong><p>Small model, compact prompts, JSON output, cache, fallback.</p></article>
+
+      <section class="metric-band" aria-label="Product metrics">
+        <article>
+          <span>Target user</span>
+          <strong>SMB SOCs + MSSPs</strong>
+          <p>Teams that need automation without enterprise SOAR pricing.</p>
+        </article>
+        <article>
+          <span>Core pain</span>
+          <strong>Alert fatigue</strong>
+          <p>Too many false positives and repeated alerts slow analyst response.</p>
+        </article>
+        <article>
+          <span>MVP wedge</span>
+          <strong>Wazuh Pipeline</strong>
+          <p>Connect Wazuh/OpenSearch, normalize alerts, triage, and automate.</p>
+        </article>
+        <article>
+          <span>AI strategy</span>
+          <strong>Cheap Cloud</strong>
+          <p>Small useful model, compact prompts, JSON output, cache, fallback.</p>
+        </article>
       </section>
-      <section class="grid two" id="pain">
-        <article class="panel"><p class="eyebrow">Judge Summary</p><h2>What We Are Building</h2><p>The product is an AI-assisted SOC/SOAR layer for analysts. It reads SIEM alerts, removes repeated noise, gives concise attack analysis, groups related events into incidents, and starts response actions through n8n or Shuffle after analyst approval.</p></article>
-        <article class="panel amber"><p class="eyebrow">Industry Pain</p><h2>Why It Matters</h2><p>SOC teams face alert overload, repeated false positives, limited analyst time, and expensive enterprise automation platforms.</p></article>
+
+      <section class="two-column" id="pain">
+        <article class="content-panel">
+          <p class="eyebrow">Judge summary</p>
+          <h2>What We Are Building</h2>
+          <p>
+            The product is an AI-assisted SOC/SOAR layer for analysts. It reads
+            SIEM alerts, removes repeated noise, gives a concise attack analysis,
+            groups related events into incidents, and starts response actions
+            through n8n or Shuffle after analyst approval.
+          </p>
+          <ul class="check-list">
+            <li>Built first on Wazuh because it is open-source and hackathon-friendly.</li>
+            <li>Designed with a normalized alert schema so other SIEMs can replace Wazuh later.</li>
+            <li>Focused on analyst productivity, not a generic chatbot interface.</li>
+          </ul>
+        </article>
+
+        <article class="content-panel emphasis">
+          <p class="eyebrow">Industry pain</p>
+          <h2>Why It Matters</h2>
+          <p>
+            SOC teams face alert overload, repeated false positives, limited
+            analyst time, and expensive enterprise automation platforms. Smaller
+            teams often have detection tools but not enough people or budget to
+            convert alerts into clean, prioritized response workflows.
+          </p>
+          <ul class="check-list">
+            <li>Analysts waste time reading low-context raw alerts.</li>
+            <li>Escalation quality depends heavily on individual analyst experience.</li>
+            <li>Commercial AI SOC copilots are often costly and closed.</li>
+          </ul>
+        </article>
       </section>
-      <section class="panel" id="architecture">
-        <p class="eyebrow">High-Level Architecture</p><h2>From SIEM Alerts To Analyst Action</h2>
-        <div class="lane">
-          <div><span>1</span><strong>Wazuh / OpenSearch</strong><p>Read alerts through API and index queries.</p></div><div><span>2</span><strong>FastAPI</strong><p>Ingestion, connector endpoints, and audit APIs.</p></div><div><span>3</span><strong>Normalized Schema</strong><p>Vendor-neutral fields for future SIEM replacement.</p></div><div><span>4</span><strong>AI Triage</strong><p>Low-cost LLM returns strict JSON verdicts and evidence.</p></div><div><span>5</span><strong>Incidents</strong><p>Group related alerts and score risk.</p></div><div><span>6</span><strong>SOAR</strong><p>Approval-gated n8n or Shuffle workflows.</p></div><div><span>7</span><strong>Dashboard</strong><p>Analyst console for alerts, incidents, and actions.</p></div>
+
+      <section class="three-column" id="mvp">
+        <article class="content-panel">
+          <p class="eyebrow">MVP wedge</p>
+          <h2>Start Narrow</h2>
+          <p>
+            The first working product reduces Wazuh alert noise and creates
+            analyst-ready incident summaries. It will prove value with before
+            and after numbers, not broad claims.
+          </p>
+        </article>
+        <article class="content-panel">
+          <p class="eyebrow">Startup mindset</p>
+          <h2>Commercial Path</h2>
+          <p>
+            Start low-cost and self-hostable for SMB SOCs and MSSPs, then grow
+            toward SIEM-agnostic connectors, private deployment, and team-level
+            response workflows.
+          </p>
+        </article>
+        <article class="content-panel">
+          <p class="eyebrow">Proof target</p>
+          <h2>Demo Metrics</h2>
+          <p>
+            Show duplicate suppression, alert-to-incident grouping, AI verdicts,
+            SOAR action logs, Slack notifications, and dashboard screenshots.
+          </p>
+        </article>
+      </section>
+
+      <section class="content-panel wide" id="architecture">
+        <div class="section-heading">
+          <p class="eyebrow">High-level architecture</p>
+          <h2>From SIEM Alerts To Analyst Action</h2>
+        </div>
+        <div class="architecture-lane">
+          <div><span>1</span><strong>Wazuh / OpenSearch</strong><p>Read security alerts through API and index queries.</p></div>
+          <div><span>2</span><strong>FastAPI</strong><p>Connector endpoints, ingestion jobs, auth, and audit APIs.</p></div>
+          <div><span>3</span><strong>Normalized Schema</strong><p>Vendor-neutral alert fields for future SIEM replacement.</p></div>
+          <div><span>4</span><strong>AI Triage</strong><p>Cheap Cloud model returns strict JSON verdicts and evidence.</p></div>
+          <div><span>5</span><strong>Incidents</strong><p>Group related alerts, score risk, and store analyst feedback.</p></div>
+          <div><span>6</span><strong>SOAR</strong><p>Approval-gated n8n or Shuffle workflows with Slack updates.</p></div>
+          <div><span>7</span><strong>Dashboard</strong><p>React operator console for triage, incidents, and actions.</p></div>
         </div>
       </section>
-      <section class="panel" id="cost"><p class="eyebrow">Token And Cost Controls</p><h2>Low-token Cheap Cloud Policy</h2><div class="grid three"><article><strong>Do not fine-tune in MVP</strong><p>Use prompt engineering plus structured JSON.</p></article><article><strong>Send compact context</strong><p>Only normalized alert fields and compact history go to the model.</p></article><article><strong>Cache duplicate triage</strong><p>Repeated alerts reuse prior verdicts unless evidence changes.</p></article></div></section>
-      <section class="panel" id="plan"><p class="eyebrow">Day-Wise Execution Plan</p><h2>Seven Days To A Working MVP</h2><div class="days"><article class="day done"><span>Day 1</span><strong>Complete</strong><h3>Market Strategy</h3><ul><li>Market strategy, pain research, MVP selection.</li></ul></article><article class="day done"><span>Day 2</span><strong>Complete</strong><h3>Product Plan</h3><ul><li>Architecture, stack, skills, build sequence.</li></ul></article><article class="day done"><span>Day 3</span><strong>Complete</strong><h3>Wazuh Pipeline</h3><ul><li>Sample alerts, OpenSearch connector, normalized APIs, dashboard preview.</li></ul></article><article class="day current"><span>Day 4</span><strong>Next</strong><h3>AI Triage</h3><ul><li>JSON verdicts, confidence, evidence, MITRE context.</li></ul></article><article class="day"><span>Day 5</span><strong>Planned</strong><h3>Incidents</h3><ul><li>Grouping, risk scoring, noise metrics.</li></ul></article><article class="day"><span>Day 6</span><strong>Planned</strong><h3>SOAR + UI</h3><ul><li>n8n, Shuffle, Slack, approval controls.</li></ul></article><article class="day"><span>Day 7</span><strong>Planned</strong><h3>Demo Polish</h3><ul><li>Security review, screenshots, pitch metrics.</li></ul></article></div></section>
+
+      <section class="content-panel wide" id="stack">
+        <div class="section-heading">
+          <p class="eyebrow">Technology stack</p>
+          <h2>Low-Cost, Open, Replaceable Components</h2>
+        </div>
+        <div class="stack-grid">
+          <div><span>Backend</span><strong>FastAPI</strong><p>API, ingestion, LLM adapter, incident logic, audit logs.</p></div>
+          <div><span>Frontend</span><strong>React / Vite</strong><p>Fast SOC dashboard with alert, incident, and SOAR views.</p></div>
+          <div><span>Storage</span><strong>SQLite first</strong><p>Simple MVP storage, Postgres-ready for production.</p></div>
+          <div><span>SIEM</span><strong>Wazuh + OpenSearch</strong><p>Initial data source, replaceable through schema adapters.</p></div>
+          <div><span>SOAR</span><strong>n8n / Shuffle</strong><p>Open-source automation engine for response workflows.</p></div>
+          <div><span>Comms</span><strong>Slack</strong><p>Analyst notifications and demo-friendly response updates.</p></div>
+          <div><span>AI</span><strong>Low-cost LLM</strong><p>JSON-only triage with optional stronger-model fallback.</p></div>
+          <div><span>Skills</span><strong>Codex skills</strong><p>Frontend, backend, security, API, database, and deployment workflows.</p></div>
+        </div>
+      </section>
+
+      <section class="content-panel wide" id="cost">
+        <div class="section-heading">
+          <p class="eyebrow">Token and cost controls</p>
+          <h2>Cheap Cloud By Default</h2>
+        </div>
+        <div class="policy-grid">
+          <article>
+            <strong>Do not fine-tune in MVP</strong>
+            <p>Use prompt engineering, deterministic schema, and structured JSON before spending on model training.</p>
+          </article>
+          <article>
+            <strong>Send compact context</strong>
+            <p>Only normalized alert fields, severity, rule, asset, timeline, and minimal history go to the model.</p>
+          </article>
+          <article>
+            <strong>Cache duplicate triage</strong>
+            <p>Repeated alerts reuse the prior verdict unless the asset, severity, or evidence changes.</p>
+          </article>
+          <article>
+            <strong>Escalate low confidence</strong>
+            <p>Do not keep calling models for unclear cases. Mark for analyst review with the current evidence.</p>
+          </article>
+          <article>
+            <strong>Use JSON-only output</strong>
+            <p>Keep responses short, parseable, and audit-friendly for storage and dashboard rendering.</p>
+          </article>
+          <article>
+            <strong>Reserve stronger models</strong>
+            <p>Use larger models only for demo-critical summaries or high-severity incidents when required.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="content-panel wide" id="plan">
+        <div class="section-heading">
+          <p class="eyebrow">Day-wise execution plan</p>
+          <h2>Seven Days To A Working MVP</h2>
+        </div>
+        <div class="day-grid">
+          <article class="day-card done">
+            <div class="day-head"><span>Day 1</span><strong>Complete</strong></div>
+            <h3>Market Strategy + MVP Narrowing</h3>
+            <ul>
+              <li>Market strategy for SMB SOC and MSSP buyers.</li>
+              <li>Competitor/product scan across AI SOC copilots and SOAR tools.</li>
+              <li>Industry pain research around alert fatigue, false positives, and analyst overload.</li>
+              <li>Final MVP idea selection: Wazuh-first alert-noise reduction plus analyst action.</li>
+              <li>Startup positioning: transparent, self-hostable, low-cost SOC automation.</li>
+            </ul>
+          </article>
+
+          <article class="day-card done">
+            <div class="day-head"><span>Day 2</span><strong>Complete</strong></div>
+            <h3>Product Plan + Build Setup</h3>
+            <ul>
+              <li>Full project plan and judge-facing progress site.</li>
+              <li>High-level architecture and normalized alert schema direction.</li>
+              <li>Technology stack selection for backend, frontend, storage, SIEM, SOAR, and AI.</li>
+              <li>Codex skills for frontend UI, backend APIs, secure building, docs, and testing.</li>
+              <li>Build sequence mapped to startup validation and demo readiness.</li>
+            </ul>
+          </article>
+
+          <article class="day-card done">
+            <div class="day-head"><span>Day 3</span><strong>Complete</strong></div>
+            <h3>Wazuh Pipeline</h3>
+            <ul>
+              <li>Added Wazuh sample alerts for auth, malware, cloud, and network scan scenarios.</li>
+              <li>Added OpenSearch-ready recent alert connector.</li>
+              <li>Built normalized alert API endpoints.</li>
+              <li>Mapped severity, rule, asset, user, network, and MITRE fields.</li>
+              <li>Displayed normalized Wazuh alerts in the MVP dashboard.</li>
+            </ul>
+          </article>
+
+          <article class="day-card done">
+            <div class="day-head"><span>Day 4</span><strong>Complete</strong></div>
+            <h3>AI Triage Agent</h3>
+            <ul>
+              <li>Added `/triage/alert` and `/triage/sample` endpoints.</li>
+              <li>Generated structured JSON verdicts with confidence and risk score.</li>
+              <li>Added cache-aware replay for duplicate alerts.</li>
+              <li>Included MITRE context and SOAR recommendation fields.</li>
+            </ul>
+          </article>
+
+          <article class="day-card current">
+            <div class="day-head"><span>Day 5</span><strong>Next</strong></div>
+            <h3>Incident Grouping + Feedback</h3>
+            <ul>
+              <li>Group related alerts into incidents using entity and time-window keys.</li>
+              <li>Track duplicate suppression and noise-reduction metrics.</li>
+              <li>Capture analyst feedback for future rule and prompt tuning.</li>
+            </ul>
+          </article>
+
+          <article class="day-card">
+            <div class="day-head"><span>Day 6</span><strong>Planned</strong></div>
+            <h3>SOAR + Analyst UI</h3>
+            <ul>
+              <li>Trigger approval-gated n8n and Shuffle workflows.</li>
+              <li>Send Slack notifications for triage and response updates.</li>
+              <li>Finish alert, incident, action log, and response views.</li>
+            </ul>
+          </article>
+
+          <article class="day-card">
+            <div class="day-head"><span>Day 7</span><strong>Planned</strong></div>
+            <h3>Demo Polish + Pitch Metrics</h3>
+            <ul>
+              <li>Security review and demo-path hardening.</li>
+              <li>Before/after alert reduction numbers and incident summaries.</li>
+              <li>Dashboard screenshots, SOAR action logs, and final pitch story.</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <section class="content-panel wide">
+        <div class="section-heading">
+          <p class="eyebrow">Demo proof</p>
+          <h2>What Judges Should See By Day 7</h2>
+        </div>
+        <div class="proof-list">
+          <div><strong>Before / after alert reduction</strong><p>Raw Wazuh alerts compared with deduplicated, prioritized incidents.</p></div>
+          <div><strong>Incident summaries</strong><p>Attack explanation, impacted assets, confidence, and recommended next steps.</p></div>
+          <div><strong>SOAR action logs</strong><p>Approval, workflow trigger, Slack notification, and response audit trail.</p></div>
+          <div><strong>Dashboard screenshots</strong><p>Evidence that the MVP is a working tool, not only a research plan.</p></div>
+        </div>
+      </section>
     </main>
-    <!-- redeploy: day-3-complete -->
   </body>
 </html>

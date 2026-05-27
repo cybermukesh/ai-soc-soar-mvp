@@ -3,12 +3,62 @@ import { Activity, Bot, Database, Server, ShieldAlert, Workflow } from "lucide-r
 import { createRoot } from "react-dom/client";
 import "./styles/app.css";
 
-const alerts = [
-  { id: "demo-001", severity: "high", score: 53, rule: "5710", description: "Multiple SSH authentication failures", asset: "prod-linux-01", ip: "10.10.1.25", source: "203.0.113.45", mitre: "T1110" },
-  { id: "demo-002", severity: "critical", score: 80, rule: "554", description: "File added to malware quarantine path", asset: "finance-workstation-03", ip: "10.20.4.33", source: "10.20.4.33", mitre: "T1204" },
-  { id: "demo-003", severity: "high", score: 67, rule: "80792", description: "Cloud console root login detected", asset: "aws-prod", ip: "52.95.10.1", source: "198.51.100.77", mitre: "T1078" },
-  { id: "demo-004", severity: "medium", score: 40, rule: "31151", description: "Multiple denied connections from same source", asset: "edge-firewall", ip: "10.0.0.1", source: "203.0.113.99", mitre: "T1046" },
+type TriageDecision = {
+  alert_id: string;
+  verdict: "false_positive" | "low_priority" | "suspicious" | "true_positive" | "needs_review";
+  confidence: number;
+  risk_score: number;
+  attack_summary: string;
+  soar_recommendation: string;
+  from_cache: boolean;
+};
+
+const decisions: TriageDecision[] = [
+  {
+    alert_id: "demo-001",
+    verdict: "suspicious",
+    confidence: 0.78,
+    risk_score: 72,
+    attack_summary: "Authentication activity looks suspicious and needs validation.",
+    soar_recommendation: "request_approval_then_soar_containment",
+    from_cache: true,
+  },
+  {
+    alert_id: "demo-002",
+    verdict: "true_positive",
+    confidence: 0.9,
+    risk_score: 88,
+    attack_summary: "Potential malware behavior detected on endpoint.",
+    soar_recommendation: "request_approval_then_soar_containment",
+    from_cache: false,
+  },
+  {
+    alert_id: "demo-003",
+    verdict: "suspicious",
+    confidence: 0.78,
+    risk_score: 72,
+    attack_summary: "Authentication activity looks suspicious and needs validation.",
+    soar_recommendation: "request_approval_then_soar_containment",
+    from_cache: false,
+  },
+  {
+    alert_id: "demo-004",
+    verdict: "low_priority",
+    confidence: 0.71,
+    risk_score: 45,
+    attack_summary: "Network scanning pattern observed with moderate risk.",
+    soar_recommendation: "notify_slack_only",
+    from_cache: false,
+  },
 ];
+
+const verdictClass: Record<TriageDecision["verdict"], string> = {
+  false_positive: "sev-low",
+  low_priority: "sev-medium",
+  suspicious: "sev-high",
+  true_positive: "sev-critical",
+  needs_review: "sev-medium",
+};
 
 function App() {
   return (
@@ -21,15 +71,59 @@ function App() {
         <button className="nav-item"><Workflow size={18} /> Automation</button>
       </aside>
       <section className="workspace">
-        <header className="topbar"><div><p className="eyebrow">Day 3 complete - Day 4 next</p><h1>AI SOC SOAR Command Center</h1></div><span className="status-pill">Wazuh pipeline ready</span></header>
+        <header className="topbar">
+          <div>
+            <p className="eyebrow">Day 4 complete - Day 5 next</p>
+            <h1>AI SOC SOAR Command Center</h1>
+          </div>
+          <span className="status-pill">Low-token triage ready</span>
+        </header>
+
         <section className="metric-grid">
-          <article className="metric"><span>Normalized alerts</span><strong>{alerts.length}</strong></article>
-          <article className="metric"><span>High/Critical</span><strong>3</strong></article>
-          <article className="metric"><span>Mapped MITRE</span><strong>4</strong></article>
-          <article className="metric"><span>Next build</span><strong>AI triage</strong></article>
+          <article className="metric"><span>Triage decisions</span><strong>{decisions.length}</strong></article>
+          <article className="metric"><span>Suspicious/TP</span><strong>{decisions.filter((d) => d.verdict === "suspicious" || d.verdict === "true_positive").length}</strong></article>
+          <article className="metric"><span>Cache hits</span><strong>{decisions.filter((d) => d.from_cache).length}</strong></article>
+          <article className="metric"><span>Next build</span><strong>Incidents</strong></article>
         </section>
-        <section className="panel"><div className="panel-title"><Server size={18} /><h2>Wazuh Pipeline Proof</h2></div><div className="pipeline"><article><strong>Wazuh / OpenSearch</strong><span>sample fixtures ready; live endpoint gated by credentials</span></article><article><strong>FastAPI</strong><span>/alerts/sample, /alerts/normalized, /alerts/normalize</span></article><article><strong>Normalized schema</strong><span>alert, rule, asset, user, network, MITRE</span></article><article><strong>Dashboard</strong><span>rendering normalized alert shape</span></article><article><strong>Next</strong><span>Day 4 low-token AI triage verdicts</span></article></div></section>
-        <section className="panel"><div className="panel-title"><Database size={18} /><h2>Normalized Wazuh Alerts</h2></div><div className="alert-table"><div className="table-head"><span>Severity</span><span>Rule</span><span>Asset</span><span>Source</span><span>MITRE</span></div>{alerts.map((alert) => (<article className="alert-row" key={alert.id}><span className={`severity ${alert.severity}`}>{alert.severity}</span><span><strong>{alert.rule}</strong>{alert.description}</span><span><strong>{alert.asset}</strong>{alert.ip}</span><span>{alert.source}</span><span>{alert.mitre}</span></article>))}</div></section>
+
+        <section className="panel">
+          <div className="panel-title">
+            <Server size={18} />
+            <h2>Day 4 Proof</h2>
+          </div>
+          <div className="pipeline">
+            <article><strong>Structured JSON</strong><span>`/triage/alert` returns verdict, confidence, risk, evidence, and SOAR recommendation.</span></article>
+            <article><strong>Batch Endpoint</strong><span>`/triage/sample` triages normalized Wazuh fixtures in one request.</span></article>
+            <article><strong>Low-token cache</strong><span>Repeated alert signatures reuse decisions to reduce token usage.</span></article>
+            <article><strong>Prompt-safe behavior</strong><span>Heuristic path treats log fields as untrusted input and stays approval-gated.</span></article>
+            <article><strong>Next</strong><span>Day 5 incident grouping and noise reduction metrics.</span></article>
+          </div>
+        </section>
+
+        <section className="panel">
+          <div className="panel-title">
+            <Database size={18} />
+            <h2>Triage Decisions</h2>
+          </div>
+          <div className="alert-table">
+            <div className="table-head">
+              <span>Alert</span>
+              <span>Verdict</span>
+              <span>Confidence</span>
+              <span>Risk</span>
+              <span>SOAR</span>
+            </div>
+            {decisions.map((decision) => (
+              <article className="alert-row" key={decision.alert_id}>
+                <span><strong>{decision.alert_id}</strong>{decision.attack_summary}</span>
+                <span className={`severity ${verdictClass[decision.verdict]}`}>{decision.verdict}</span>
+                <span>{decision.confidence}</span>
+                <span>{decision.risk_score}</span>
+                <span>{decision.soar_recommendation}{decision.from_cache ? " (cache)" : ""}</span>
+              </article>
+            ))}
+          </div>
+        </section>
       </section>
     </main>
   );
