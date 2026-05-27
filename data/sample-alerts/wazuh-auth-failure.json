@@ -1,0 +1,25 @@
+{
+  "id": "demo-001",
+  "timestamp": "2026-05-27T09:00:00Z",
+  "rule": {
+    "id": "5710",
+    "level": 8,
+    "description": "Multiple SSH authentication failures",
+    "groups": ["authentication_failed", "sshd"],
+    "mitre": {
+      "id": ["T1110"],
+      "tactic": ["Credential Access"]
+    }
+  },
+  "agent": {
+    "id": "007",
+    "name": "prod-linux-01",
+    "ip": "10.10.1.25"
+  },
+  "data": {
+    "srcip": "203.0.113.45",
+    "srcuser": "admin"
+  },
+  "full_log": "Failed password for admin from 203.0.113.45 port 45122 ssh2",
+  "location": "/var/log/auth.log"
+}
