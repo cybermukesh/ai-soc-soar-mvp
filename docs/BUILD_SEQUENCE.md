@@ -14,14 +14,13 @@
 - Confirm normalized schema direction.
 - Add Day 2 status to public site and local dashboard skeleton.
 
-## Day 3 - Wazuh Pipeline
+## Day 3 - Wazuh Pipeline - Complete
 
-1. Run or connect a Wazuh deployment.
-2. Validate Wazuh API and OpenSearch credentials.
-3. Fetch recent alerts from OpenSearch.
-4. Normalize alert fields into NormalizedAlert.
-5. Store or serve fetched alerts through the backend.
-6. Display normalized alerts on the MVP dashboard.
+- Added Wazuh sample alert fixtures for auth failure, malware, cloud login, and network scan.
+- Added an OpenSearch-ready connector gated by credentials.
+- Added raw-to-normalized alert conversion endpoints.
+- Added normalized alert summary and list endpoints.
+- Displayed normalized Wazuh alert data in the MVP dashboard.
 
 ## Day 4 - AI Triage
 
