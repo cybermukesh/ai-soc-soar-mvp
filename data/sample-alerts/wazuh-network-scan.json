@@ -1,0 +1,15 @@
+{
+  "id": "demo-004",
+  "timestamp": "2026-05-27T09:22:00Z",
+  "rule": {
+    "id": "31151",
+    "level": 6,
+    "description": "Multiple denied connections from same source",
+    "groups": ["firewall", "network_scan"],
+    "mitre": {"id": ["T1046"], "tactic": ["Discovery"]}
+  },
+  "agent": {"id": "fw01", "name": "edge-firewall", "ip": "10.0.0.1"},
+  "data": {"srcip": "203.0.113.99", "dstip": "10.0.5.20", "srcport": "49822", "dstport": "22"},
+  "full_log": "Firewall denied repeated inbound SSH connection attempts",
+  "location": "firewall"
+}
