@@ -6,9 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.auth import require_role
-from app.db.models import AuditLog, Connector, User
+from app.db.models import AuditLog, Connector, ConnectorHealthCheck, User
 from app.db.session import get_db
-from app.models.connectors import ConnectorHealthResponse, ConnectorOut, ConnectorUpsertRequest
+from app.models.connectors import (
+    ConnectorHealthCheckOut,
+    ConnectorHealthResponse,
+    ConnectorOut,
+    ConnectorUpsertRequest,
+)
 from app.services.crypto import decrypt_secret, encrypt_secret
 
 router = APIRouter(prefix="/api/v1/connectors", tags=["connectors"])
@@ -92,6 +97,15 @@ def connector_health(
         row.last_error = "connector disabled"
         row.last_checked_at = datetime.now(timezone.utc)
         row.last_latency_ms = int((time.perf_counter() - started) * 1000)
+        db.add(
+            ConnectorHealthCheck(
+                connector_id=row.id,
+                ok=False,
+                detail="disabled",
+                latency_ms=row.last_latency_ms,
+                checked_by_user_id=user.id,
+            )
+        )
         db.commit()
         return ConnectorHealthResponse(name=name, ok=False, detail="disabled")
 
@@ -102,6 +116,15 @@ def connector_health(
     row.last_error = "" if ok else detail
     row.last_checked_at = datetime.now(timezone.utc)
     row.last_latency_ms = int((time.perf_counter() - started) * 1000)
+    db.add(
+        ConnectorHealthCheck(
+            connector_id=row.id,
+            ok=ok,
+            detail=detail,
+            latency_ms=row.last_latency_ms,
+            checked_by_user_id=user.id,
+        )
+    )
     db.commit()
     _audit(db, user, "check_connector_health", str(row.id), detail)
     return ConnectorHealthResponse(name=name, ok=ok, detail=detail)
@@ -130,3 +153,33 @@ def seed_defaults(
     db.commit()
     _audit(db, admin, "seed_default_connectors", "all", "from env")
     return {"status": "ok"}
+
+
+@router.get("/{name}/history", response_model=list[ConnectorHealthCheckOut])
+def connector_history(
+    name: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_role("admin", "analyst", "viewer")),
+):
+    row = db.query(Connector).filter(Connector.name == name).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Connector not found")
+    checks = (
+        db.query(ConnectorHealthCheck)
+        .filter(ConnectorHealthCheck.connector_id == row.id)
+        .order_by(ConnectorHealthCheck.id.desc())
+        .limit(100)
+        .all()
+    )
+    return [
+        ConnectorHealthCheckOut(
+            id=c.id,
+            connector_id=c.connector_id,
+            ok=c.ok,
+            detail=c.detail,
+            latency_ms=c.latency_ms,
+            checked_by_user_id=c.checked_by_user_id,
+            created_at=c.created_at.isoformat() if c.created_at else "",
+        )
+        for c in checks
+    ]

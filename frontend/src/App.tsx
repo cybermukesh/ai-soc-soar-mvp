@@ -8,6 +8,7 @@ const API = "http://localhost:8000";
 type User = { id: number; email: string; full_name: string; role: "admin" | "analyst" | "viewer"; is_active: boolean };
 type AuditLog = { id: number; actor_user_id: number; action: string; target_type: string; target_id: string; detail: string; created_at: string };
 type Connector = { id: number; name: string; connector_type: string; base_url: string; username: string; password_masked: string; enabled: boolean; last_status: string; last_error: string; last_latency_ms: number; last_checked_at: string };
+type ConnectorHistory = { id: number; connector_id: number; ok: boolean; detail: string; latency_ms: number; checked_by_user_id: number; created_at: string };
 type TriageDecision = {
   alert_id: string;
   verdict: "false_positive" | "low_priority" | "suspicious" | "true_positive" | "needs_review";
@@ -40,7 +41,9 @@ function App() {
   const [adminMsg, setAdminMsg] = React.useState("");
   const [users, setUsers] = React.useState<User[]>([]);
   const [auditLogs, setAuditLogs] = React.useState<AuditLog[]>([]);
+  const [auditFilter, setAuditFilter] = React.useState({ action: "", actor_user_id: "", target_type: "" });
   const [connectors, setConnectors] = React.useState<Connector[]>([]);
+  const [connectorHistory, setConnectorHistory] = React.useState<ConnectorHistory[]>([]);
   const [connectorMsg, setConnectorMsg] = React.useState("");
   const [connectorForm, setConnectorForm] = React.useState({ name: "wazuh", base_url: "", username: "", password: "", enabled: true });
 
@@ -69,10 +72,14 @@ function App() {
     fetch(`${API}/api/v1/auth/users`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((data) => setUsers(Array.isArray(data) ? data : []));
-    fetch(`${API}/api/v1/auth/audit-logs`, { headers: { Authorization: `Bearer ${token}` } })
+    const params = new URLSearchParams();
+    if (auditFilter.action) params.set("action", auditFilter.action);
+    if (auditFilter.actor_user_id) params.set("actor_user_id", auditFilter.actor_user_id);
+    if (auditFilter.target_type) params.set("target_type", auditFilter.target_type);
+    fetch(`${API}/api/v1/auth/audit-logs?${params.toString()}`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((data) => setAuditLogs(Array.isArray(data) ? data : []));
-  }, [token, user?.role, adminMsg]);
+  }, [token, user?.role, adminMsg, auditFilter.action, auditFilter.actor_user_id, auditFilter.target_type]);
 
   React.useEffect(() => {
     if (!token) return;
@@ -93,6 +100,9 @@ function App() {
     const data = await res.json();
     setConnectorMsg(`${name}: ${data.detail}`);
     refreshConnectors();
+    const historyRes = await fetch(`${API}/api/v1/connectors/${name}/history`, { headers: { Authorization: `Bearer ${token}` } });
+    const historyData = await historyRes.json();
+    setConnectorHistory(Array.isArray(historyData) ? historyData : []);
   }
 
   async function saveConnector() {
@@ -259,10 +269,23 @@ function App() {
               ))}
             </div>
             <h3>Audit Logs</h3>
+            <div className="admin-form">
+              <input placeholder="action (e.g. login_success)" value={auditFilter.action} onChange={(e) => setAuditFilter({ ...auditFilter, action: e.target.value })} />
+              <input placeholder="actor_user_id" value={auditFilter.actor_user_id} onChange={(e) => setAuditFilter({ ...auditFilter, actor_user_id: e.target.value })} />
+              <input placeholder="target_type (auth/user/connector)" value={auditFilter.target_type} onChange={(e) => setAuditFilter({ ...auditFilter, target_type: e.target.value })} />
+            </div>
             <div className="admin-list">
               {auditLogs.slice(0, 20).map((log) => (
                 <article key={log.id} className="admin-item">
                   <span>#{log.id} {log.action} {log.target_type}:{log.target_id} - {log.detail}</span>
+                </article>
+              ))}
+            </div>
+            <h3>Connector Health History</h3>
+            <div className="admin-list">
+              {connectorHistory.slice(0, 20).map((h) => (
+                <article key={h.id} className="admin-item">
+                  <span>#{h.id} connector={h.connector_id} ok={String(h.ok)} latency={h.latency_ms}ms user={h.checked_by_user_id} {h.detail}</span>
                 </article>
               ))}
             </div>

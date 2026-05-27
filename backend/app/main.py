@@ -44,6 +44,24 @@ def startup() -> None:
         if cols and "last_checked_at" not in names:
             conn.execute(text("ALTER TABLE connectors ADD COLUMN last_checked_at DATETIME"))
             conn.commit()
+        check_cols = conn.execute(text("PRAGMA table_info(connector_health_checks)")).fetchall()
+        if not check_cols:
+            conn.execute(
+                text(
+                    """
+                    CREATE TABLE connector_health_checks (
+                        id INTEGER PRIMARY KEY,
+                        connector_id INTEGER NOT NULL,
+                        ok BOOLEAN DEFAULT 0,
+                        detail VARCHAR(300) DEFAULT '',
+                        latency_ms INTEGER DEFAULT 0,
+                        checked_by_user_id INTEGER NOT NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+            )
+            conn.commit()
     db: Session = SessionLocal()
     try:
         ensure_admin_seed(db)

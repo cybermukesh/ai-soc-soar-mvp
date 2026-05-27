@@ -51,3 +51,14 @@ class Connector(Base):
     updated_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class ConnectorHealthCheck(Base):
+    __tablename__ = "connector_health_checks"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    connector_id: Mapped[int] = mapped_column(index=True)
+    ok: Mapped[bool] = mapped_column(Boolean, default=False)
+    detail: Mapped[str] = mapped_column(String(300), default="")
+    latency_ms: Mapped[int] = mapped_column(default=0)
+    checked_by_user_id: Mapped[int] = mapped_column(index=True)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())

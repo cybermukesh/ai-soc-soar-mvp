@@ -26,3 +26,13 @@ class ConnectorHealthResponse(BaseModel):
     name: str
     ok: bool
     detail: str
+
+
+class ConnectorHealthCheckOut(BaseModel):
+    id: int
+    connector_id: int
+    ok: bool
+    detail: str
+    latency_ms: int
+    checked_by_user_id: int
+    created_at: str

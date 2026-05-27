@@ -8,6 +8,16 @@ body {
   background: #f4f7fb;
   color: #101828;
 }
+.login-shell{min-height:100vh;display:grid;place-items:center;background:#f4f7fb}
+.login-card{width:min(420px,92vw);background:#fff;border:1px solid #d0d5dd;border-radius:8px;padding:20px;display:grid;gap:10px}
+.login-card input,.admin-form input,.admin-form select{height:38px;border:1px solid #d0d5dd;border-radius:8px;padding:0 10px;font:inherit}
+.login-card button,.admin-form button{height:38px;border:0;border-radius:8px;background:#0f766e;color:#fff;font-weight:700;cursor:pointer}
+.error{color:#b42318;font-size:13px}
+.admin-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.admin-list{display:grid;gap:8px;margin-top:10px}
+.admin-item{display:flex;justify-content:space-between;align-items:center;border:1px solid #d0d5dd;border-radius:8px;padding:10px;background:#f8fafc;gap:10px}
+.admin-item button{height:32px;border:0;border-radius:8px;background:#344054;color:#fff;padding:0 10px;cursor:pointer}
+h3{margin:14px 0 8px}
 
 .app-shell {
   min-height: 100vh;
@@ -266,4 +276,5 @@ h1 {
   .table-head {
     display: none;
   }
+  .admin-form{grid-template-columns:1fr}
 }
