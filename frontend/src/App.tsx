@@ -9,6 +9,7 @@ type User = { id: number; email: string; full_name: string; role: "admin" | "ana
 type AuditLog = { id: number; actor_user_id: number; action: string; target_type: string; target_id: string; detail: string; created_at: string };
 type Connector = { id: number; name: string; connector_type: string; base_url: string; username: string; password_masked: string; enabled: boolean; last_status: string; last_error: string; last_latency_ms: number; last_checked_at: string };
 type ConnectorHistory = { id: number; connector_id: number; ok: boolean; detail: string; latency_ms: number; checked_by_user_id: number; created_at: string };
+type Incident = { id: number; title: string; severity: string; status: string; risk_score: number; source_tool: string; created_by_user_id: number; created_at: string };
 type TriageDecision = {
   alert_id: string;
   verdict: "false_positive" | "low_priority" | "suspicious" | "true_positive" | "needs_review";
@@ -34,7 +35,7 @@ function App() {
   const [password, setPassword] = React.useState("admin123");
   const [error, setError] = React.useState("");
   const [loading, setLoading] = React.useState(false);
-  const [tab, setTab] = React.useState<"overview" | "connectors" | "triage" | "automation" | "admin">("overview");
+  const [tab, setTab] = React.useState<"overview" | "connectors" | "triage" | "incidents" | "automation" | "admin">("overview");
   const [decisions, setDecisions] = React.useState<TriageDecision[]>([]);
 
   const [newUser, setNewUser] = React.useState({ email: "", full_name: "", password: "", role: "analyst" });
@@ -46,6 +47,9 @@ function App() {
   const [connectorHistory, setConnectorHistory] = React.useState<ConnectorHistory[]>([]);
   const [connectorMsg, setConnectorMsg] = React.useState("");
   const [connectorForm, setConnectorForm] = React.useState({ name: "wazuh", base_url: "", username: "", password: "", enabled: true });
+  const [incidents, setIncidents] = React.useState<Incident[]>([]);
+  const [incidentForm, setIncidentForm] = React.useState({ title: "", severity: "medium", risk_score: 50, source_tool: "wazuh" });
+  const [incidentMsg, setIncidentMsg] = React.useState("");
 
   React.useEffect(() => {
     if (!token) return;
@@ -88,6 +92,14 @@ function App() {
       .then((data) => setConnectors(Array.isArray(data) ? data : []));
   }, [token, adminMsg]);
 
+  React.useEffect(() => {
+    if (!token) return;
+    fetch(`${API}/api/v1/incidents`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => setIncidents(Array.isArray(data) ? data : []))
+      .catch(() => setIncidents([]));
+  }, [token, incidentMsg]);
+
   async function refreshConnectors() {
     if (!token) return;
     const res = await fetch(`${API}/api/v1/connectors`, { headers: { Authorization: `Bearer ${token}` } });
@@ -123,6 +135,29 @@ function App() {
     });
     setConnectorMsg(res.ok ? "Seeded connectors from env" : "Failed to seed from env");
     refreshConnectors();
+  }
+
+  async function createIncident() {
+    if (!incidentForm.title.trim()) {
+      setIncidentMsg("Title is required");
+      return;
+    }
+    const res = await fetch(`${API}/api/v1/incidents`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(incidentForm),
+    });
+    const data = await res.json();
+    setIncidentMsg(res.ok ? `Created incident #${data.id}` : `Failed: ${data.detail || "error"}`);
+  }
+
+  async function updateIncidentStatus(incidentId: number, status: string) {
+    const res = await fetch(`${API}/api/v1/incidents/${incidentId}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ status, note: `set via dashboard to ${status}` }),
+    });
+    setIncidentMsg(res.ok ? `Updated incident #${incidentId}` : "Failed to update incident");
   }
 
   async function login() {
@@ -189,7 +224,9 @@ function App() {
       <aside className="sidebar">
         <div className="brand">AI SOC</div>
         <button className={`nav-item ${tab === "overview" ? "active" : ""}`} onClick={() => setTab("overview")}><Activity size={18} /> Overview</button>
+        <button className={`nav-item ${tab === "connectors" ? "active" : ""}`} onClick={() => setTab("connectors")}><Plug size={18} /> Connectors</button>
         <button className={`nav-item ${tab === "triage" ? "active" : ""}`} onClick={() => setTab("triage")}><ShieldAlert size={18} /> AI Triage</button>
+        <button className={`nav-item ${tab === "incidents" ? "active" : ""}`} onClick={() => setTab("incidents")}><Activity size={18} /> Incidents</button>
         <button className={`nav-item ${tab === "automation" ? "active" : ""}`} onClick={() => setTab("automation")}><Workflow size={18} /> Automation</button>
         {user.role === "admin" ? <button className={`nav-item ${tab === "admin" ? "active" : ""}`} onClick={() => setTab("admin")}><Users size={18} /> Admin</button> : null}
         <button className="nav-item" onClick={() => { localStorage.removeItem("token"); setToken(""); setUser(null); }}><Bot size={18} /> Logout</button>
@@ -217,7 +254,7 @@ function App() {
               {connectors.map((c) => (
                 <article key={c.id} className="admin-item">
                   <span><strong>{c.name}</strong> {c.base_url || "not set"} | {c.last_status}{c.last_error ? ` (${c.last_error})` : ""} | latency: {c.last_latency_ms}ms | checked: {c.last_checked_at || "-"}</span>
-                  <button onClick={() => checkConnectorHealth(c.name)}>Check health</button>
+              <button onClick={() => checkConnectorHealth(c.name)} disabled={user.role === "viewer"}>Check health</button>
                 </article>
               ))}
             </div>
@@ -236,6 +273,37 @@ function App() {
                   <span>{d.confidence}</span>
                   <span>{d.risk_score}</span>
                   <span>{d.soar_recommendation}{d.from_cache ? " (cache)" : ""}</span>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {tab === "incidents" ? (
+          <section className="panel">
+            <h2>Incidents</h2>
+            {(user.role === "admin" || user.role === "analyst") ? (
+              <div className="admin-form">
+                <input placeholder="Title" value={incidentForm.title} onChange={(e) => setIncidentForm({ ...incidentForm, title: e.target.value })} />
+                <select value={incidentForm.severity} onChange={(e) => setIncidentForm({ ...incidentForm, severity: e.target.value })}>
+                  <option value="low">low</option><option value="medium">medium</option><option value="high">high</option><option value="critical">critical</option>
+                </select>
+                <input type="number" min={0} max={100} value={incidentForm.risk_score} onChange={(e) => setIncidentForm({ ...incidentForm, risk_score: Number(e.target.value) || 0 })} />
+                <input placeholder="Source tool" value={incidentForm.source_tool} onChange={(e) => setIncidentForm({ ...incidentForm, source_tool: e.target.value })} />
+                <button onClick={createIncident}>Create incident</button>
+              </div>
+            ) : null}
+            {incidentMsg ? <p>{incidentMsg}</p> : null}
+            <div className="admin-list">
+              {incidents.map((i) => (
+                <article className="admin-item" key={i.id}>
+                  <span><strong>#{i.id}</strong> {i.title} | sev={i.severity} | status={i.status} | risk={i.risk_score}</span>
+                  {(user.role === "admin" || user.role === "analyst") ? (
+                    <div className="incident-actions">
+                      <button onClick={() => updateIncidentStatus(i.id, "investigating")}>Investigating</button>
+                      <button onClick={() => updateIncidentStatus(i.id, "resolved")}>Resolved</button>
+                    </div>
+                  ) : null}
                 </article>
               ))}
             </div>

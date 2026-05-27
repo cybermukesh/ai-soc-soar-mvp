@@ -62,3 +62,25 @@ class ConnectorHealthCheck(Base):
     latency_ms: Mapped[int] = mapped_column(default=0)
     checked_by_user_id: Mapped[int] = mapped_column(index=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class Incident(Base):
+    __tablename__ = "incidents"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    title: Mapped[str] = mapped_column(String(200))
+    severity: Mapped[str] = mapped_column(String(20), default="medium", index=True)
+    status: Mapped[str] = mapped_column(String(30), default="open", index=True)
+    risk_score: Mapped[int] = mapped_column(default=50)
+    source_tool: Mapped[str] = mapped_column(String(40), default="wazuh")
+    created_by_user_id: Mapped[int] = mapped_column(index=True)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class IncidentEvent(Base):
+    __tablename__ = "incident_events"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    incident_id: Mapped[int] = mapped_column(index=True)
+    event_type: Mapped[str] = mapped_column(String(50))
+    detail: Mapped[str] = mapped_column(String(500), default="")
+    actor_user_id: Mapped[int] = mapped_column(index=True)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())

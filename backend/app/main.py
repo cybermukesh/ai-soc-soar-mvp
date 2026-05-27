@@ -5,6 +5,7 @@ from sqlalchemy import text
 
 from app.api.auth import current_user, require_role, router as auth_router
 from app.api.connectors import router as connectors_router
+from app.api.incidents import router as incidents_router
 from app.connectors.opensearch import fetch_recent_wazuh_alerts, opensearch_configured
 from app.db.models import Base
 from app.db.sqlite_store import init_db, list_alerts, upsert_alert, upsert_triage
@@ -62,6 +63,42 @@ def startup() -> None:
                 )
             )
             conn.commit()
+        incident_cols = conn.execute(text("PRAGMA table_info(incidents)")).fetchall()
+        if not incident_cols:
+            conn.execute(
+                text(
+                    """
+                    CREATE TABLE incidents (
+                        id INTEGER PRIMARY KEY,
+                        title VARCHAR(200) NOT NULL,
+                        severity VARCHAR(20) DEFAULT 'medium',
+                        status VARCHAR(30) DEFAULT 'open',
+                        risk_score INTEGER DEFAULT 50,
+                        source_tool VARCHAR(40) DEFAULT 'wazuh',
+                        created_by_user_id INTEGER NOT NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+            )
+            conn.commit()
+        event_cols = conn.execute(text("PRAGMA table_info(incident_events)")).fetchall()
+        if not event_cols:
+            conn.execute(
+                text(
+                    """
+                    CREATE TABLE incident_events (
+                        id INTEGER PRIMARY KEY,
+                        incident_id INTEGER NOT NULL,
+                        event_type VARCHAR(50) NOT NULL,
+                        detail VARCHAR(500) DEFAULT '',
+                        actor_user_id INTEGER NOT NULL,
+                        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+            )
+            conn.commit()
     db: Session = SessionLocal()
     try:
         ensure_admin_seed(db)
@@ -71,6 +108,7 @@ def startup() -> None:
 
 app.include_router(auth_router)
 app.include_router(connectors_router)
+app.include_router(incidents_router)
 
 
 @app.get("/health")
