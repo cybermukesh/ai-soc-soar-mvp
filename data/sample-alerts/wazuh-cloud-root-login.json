@@ -1,0 +1,15 @@
+{
+  "id": "demo-003",
+  "timestamp": "2026-05-27T09:15:00Z",
+  "rule": {
+    "id": "80792",
+    "level": 10,
+    "description": "Cloud console root login detected",
+    "groups": ["aws", "authentication_success"],
+    "mitre": {"id": ["T1078"], "tactic": ["Initial Access", "Defense Evasion"]}
+  },
+  "agent": {"id": "cloud", "name": "aws-prod", "ip": "52.95.10.1"},
+  "data": {"srcip": "198.51.100.77", "user": "root"},
+  "full_log": "AWS root account login succeeded from an unusual network",
+  "location": "aws-cloudtrail"
+}
