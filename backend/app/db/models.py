@@ -72,6 +72,11 @@ class Incident(Base):
     status: Mapped[str] = mapped_column(String(30), default="open", index=True)
     risk_score: Mapped[int] = mapped_column(default=50)
     source_tool: Mapped[str] = mapped_column(String(40), default="wazuh")
+    alert_id: Mapped[str] = mapped_column(String(120), default="", index=True)
+    ticket_ref: Mapped[str] = mapped_column(String(120), default="")
+    owner_name: Mapped[str] = mapped_column(String(120), default="")
+    phase: Mapped[str] = mapped_column(String(40), default="new", index=True)
+    summary: Mapped[str] = mapped_column(String(1000), default="")
     created_by_user_id: Mapped[int] = mapped_column(index=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

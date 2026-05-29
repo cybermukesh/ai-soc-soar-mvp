@@ -11,6 +11,10 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class MessageResponse(BaseModel):
+    message: str
+
+
 class UserOut(BaseModel):
     id: int
     email: EmailStr
@@ -24,6 +28,12 @@ class CreateUserRequest(BaseModel):
     full_name: str
     password: str
     role: str
+
+
+class RegisterUserRequest(BaseModel):
+    email: EmailStr
+    full_name: str
+    password: str
 
 
 class ToggleUserActiveRequest(BaseModel):

@@ -75,6 +75,11 @@ def startup() -> None:
                         status VARCHAR(30) DEFAULT 'open',
                         risk_score INTEGER DEFAULT 50,
                         source_tool VARCHAR(40) DEFAULT 'wazuh',
+                        alert_id VARCHAR(120) DEFAULT '',
+                        ticket_ref VARCHAR(120) DEFAULT '',
+                        owner_name VARCHAR(120) DEFAULT '',
+                        phase VARCHAR(40) DEFAULT 'new',
+                        summary VARCHAR(1000) DEFAULT '',
                         created_by_user_id INTEGER NOT NULL,
                         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                     )
@@ -82,6 +87,23 @@ def startup() -> None:
                 )
             )
             conn.commit()
+        else:
+            incident_names = {row[1] for row in incident_cols}
+            if "alert_id" not in incident_names:
+                conn.execute(text("ALTER TABLE incidents ADD COLUMN alert_id VARCHAR(120) DEFAULT ''"))
+                conn.commit()
+            if "ticket_ref" not in incident_names:
+                conn.execute(text("ALTER TABLE incidents ADD COLUMN ticket_ref VARCHAR(120) DEFAULT ''"))
+                conn.commit()
+            if "owner_name" not in incident_names:
+                conn.execute(text("ALTER TABLE incidents ADD COLUMN owner_name VARCHAR(120) DEFAULT ''"))
+                conn.commit()
+            if "phase" not in incident_names:
+                conn.execute(text("ALTER TABLE incidents ADD COLUMN phase VARCHAR(40) DEFAULT 'new'"))
+                conn.commit()
+            if "summary" not in incident_names:
+                conn.execute(text("ALTER TABLE incidents ADD COLUMN summary VARCHAR(1000) DEFAULT ''"))
+                conn.commit()
         event_cols = conn.execute(text("PRAGMA table_info(incident_events)")).fetchall()
         if not event_cols:
             conn.execute(
@@ -204,6 +226,22 @@ def normalized_alerts(_: Session = Depends(require_role("admin", "analyst", "vie
         for alert in alerts:
             upsert_alert(alert)
     return [alert.model_dump() for alert in alerts]
+
+
+@app.get("/triage/alerts/recent")
+def triage_recent_alerts(
+    limit: int = 25,
+    force_refresh: bool = False,
+    _: Session = Depends(require_role("admin", "analyst", "viewer")),
+) -> TriageBatchResponse:
+    alerts = list_alerts(limit=limit)
+    if not alerts:
+        alerts = load_normalized_sample_alerts()
+    decisions = triage_alerts(alerts, force_refresh=force_refresh)
+    for alert, decision in zip(alerts, decisions):
+        upsert_alert(alert)
+        upsert_triage(decision)
+    return TriageBatchResponse(decisions=decisions)
 
 
 @app.post("/alerts/normalize")

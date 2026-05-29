@@ -6,6 +6,7 @@ from app.db.models import AuditLog, Incident, IncidentEvent, User
 from app.db.session import get_db
 from app.models.incidents import (
     IncidentCreateRequest,
+    IncidentEventCreateRequest,
     IncidentEventOut,
     IncidentOut,
     IncidentStatusUpdateRequest,
@@ -22,6 +23,11 @@ def _out(i: Incident) -> IncidentOut:
         status=i.status,
         risk_score=i.risk_score,
         source_tool=i.source_tool,
+        alert_id=i.alert_id,
+        ticket_ref=i.ticket_ref,
+        owner_name=i.owner_name,
+        phase=i.phase,
+        summary=i.summary,
         created_by_user_id=i.created_by_user_id,
         created_at=i.created_at.isoformat() if i.created_at else "",
     )
@@ -61,6 +67,11 @@ def create_incident(
         severity=payload.severity,
         risk_score=payload.risk_score,
         source_tool=payload.source_tool,
+        alert_id=payload.alert_id,
+        ticket_ref=payload.ticket_ref,
+        owner_name=payload.owner_name,
+        phase=payload.phase,
+        summary=payload.summary,
         status="open",
         created_by_user_id=user.id,
     )
@@ -84,6 +95,12 @@ def update_incident_status(
     if not row:
         raise HTTPException(status_code=404, detail="Incident not found")
     row.status = payload.status
+    if payload.owner_name:
+        row.owner_name = payload.owner_name
+    if payload.ticket_ref:
+        row.ticket_ref = payload.ticket_ref
+    if payload.phase:
+        row.phase = payload.phase
     db.add(IncidentEvent(incident_id=row.id, event_type="status_change", detail=payload.note or payload.status, actor_user_id=user.id))
     _audit(db, user, "update_incident_status", str(row.id), payload.status)
     db.commit()
@@ -118,3 +135,33 @@ def list_incident_events(
         )
         for r in rows
     ]
+
+
+@router.post("/{incident_id}/events", response_model=IncidentEventOut)
+def add_incident_event(
+    incident_id: int,
+    payload: IncidentEventCreateRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("admin", "analyst")),
+):
+    incident = db.query(Incident).filter(Incident.id == incident_id).first()
+    if not incident:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    row = IncidentEvent(
+        incident_id=incident_id,
+        event_type=payload.event_type,
+        detail=payload.detail,
+        actor_user_id=user.id,
+    )
+    db.add(row)
+    _audit(db, user, "add_incident_event", str(incident_id), payload.event_type)
+    db.commit()
+    db.refresh(row)
+    return IncidentEventOut(
+        id=row.id,
+        incident_id=row.incident_id,
+        event_type=row.event_type,
+        detail=row.detail,
+        actor_user_id=row.actor_user_id,
+        created_at=row.created_at.isoformat() if row.created_at else "",
+    )

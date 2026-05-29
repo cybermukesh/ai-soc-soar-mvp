@@ -6,6 +6,11 @@ class IncidentCreateRequest(BaseModel):
     severity: str = "medium"
     risk_score: int = 50
     source_tool: str = "wazuh"
+    alert_id: str = ""
+    ticket_ref: str = ""
+    owner_name: str = ""
+    phase: str = "new"
+    summary: str = ""
 
 
 class IncidentOut(BaseModel):
@@ -15,6 +20,11 @@ class IncidentOut(BaseModel):
     status: str
     risk_score: int
     source_tool: str
+    alert_id: str
+    ticket_ref: str
+    owner_name: str
+    phase: str
+    summary: str
     created_by_user_id: int
     created_at: str
 
@@ -22,6 +32,14 @@ class IncidentOut(BaseModel):
 class IncidentStatusUpdateRequest(BaseModel):
     status: str
     note: str = ""
+    owner_name: str = ""
+    ticket_ref: str = ""
+    phase: str = ""
+
+
+class IncidentEventCreateRequest(BaseModel):
+    event_type: str
+    detail: str
 
 
 class IncidentEventOut(BaseModel):

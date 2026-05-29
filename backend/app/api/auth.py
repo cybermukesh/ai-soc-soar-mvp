@@ -8,6 +8,8 @@ from app.models.auth import (
     AuditLogOut,
     CreateUserRequest,
     LoginRequest,
+    MessageResponse,
+    RegisterUserRequest,
     ToggleUserActiveRequest,
     TokenResponse,
     UserOut,
@@ -71,13 +73,49 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
         if user:
             _write_audit(db, actor_user_id=user.id, action="login_failed", target_type="auth", target_id=str(user.id), detail=payload.email)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account pending approval or inactive")
     _write_audit(db, actor_user_id=user.id, action="login_success", target_type="auth", target_id=str(user.id), detail=payload.email)
     return TokenResponse(access_token=create_access_token(user))
+
+
+@router.post("/register", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
+def register(payload: RegisterUserRequest, db: Session = Depends(get_db)) -> MessageResponse:
+    if db.query(User).filter(User.email == payload.email).first():
+        raise HTTPException(status_code=400, detail="Email already exists")
+    viewer_role = db.query(Role).filter(Role.name == "viewer").first()
+    if not viewer_role:
+        raise HTTPException(status_code=500, detail="Default viewer role missing")
+    user = User(
+        email=payload.email,
+        full_name=payload.full_name,
+        password_hash=hash_password(payload.password),
+        role_id=viewer_role.id,
+        is_active=False,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    _write_audit(
+        db,
+        actor_user_id=user.id,
+        action="register_user",
+        target_type="user",
+        target_id=str(user.id),
+        detail="self-registration pending admin approval",
+    )
+    return MessageResponse(message="Registration submitted. Await admin approval.")
 
 
 @router.get("/me", response_model=UserOut)
 def me(user: User = Depends(current_user)) -> UserOut:
     return _user_out(user)
+
+
+@router.post("/logout", response_model=MessageResponse)
+def logout(user: User = Depends(current_user), db: Session = Depends(get_db)) -> MessageResponse:
+    _write_audit(db, actor_user_id=user.id, action="logout", target_type="auth", target_id=str(user.id), detail=user.email)
+    return MessageResponse(message="Logged out")
 
 
 @router.post("/users", response_model=UserOut)
