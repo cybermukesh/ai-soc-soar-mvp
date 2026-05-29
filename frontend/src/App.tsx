@@ -22,8 +22,10 @@ type AlertRecord = {
   mitre: { tactics: string[]; techniques: string[] };
   raw_event: Record<string, unknown>;
 };
-type Incident = { id: number; title: string; severity: string; status: string; risk_score: number; source_tool: string; alert_id: string; ticket_ref: string; owner_name: string; phase: string; summary: string; created_by_user_id: number; created_at: string };
+type Incident = { id: number; title: string; severity: string; status: string; risk_score: number; source_tool: string; alert_id: string; ticket_ref: string; owner_name: string; phase: string; summary: string; priority: string; sla_due_at: string; escalated: boolean; close_reason: string; resolution_summary: string; created_by_user_id: number; created_at: string };
 type IncidentEvent = { id: number; incident_id: number; event_type: string; detail: string; actor_user_id: number; created_at: string };
+type IngestionRun = { id: number; source: string; status: string; detail: string; fetched_count: number; stored_count: number; triaged_count: number; created_at: string };
+type IngestionStatus = { stored_alerts: number; triage_history: number; last_run: IngestionRun | null; runs: IngestionRun[]; live_source: string };
 type TriageDecision = {
   alert_id: string;
   verdict: "false_positive" | "low_priority" | "suspicious" | "true_positive" | "needs_review";
@@ -75,17 +77,20 @@ function App() {
   const [connectors, setConnectors] = React.useState<Connector[]>([]);
   const [connectorHistory, setConnectorHistory] = React.useState<ConnectorHistory[]>([]);
   const [connectorMsg, setConnectorMsg] = React.useState("");
+  const [ingestionStatus, setIngestionStatus] = React.useState<IngestionStatus | null>(null);
+  const [ingestionMsg, setIngestionMsg] = React.useState("");
   const [connectorForm, setConnectorForm] = React.useState({ name: "wazuh", base_url: "", username: "", password: "", enabled: true });
   const [incidents, setIncidents] = React.useState<Incident[]>([]);
   const [incidentEvents, setIncidentEvents] = React.useState<IncidentEvent[]>([]);
   const [incidentSelectedId, setIncidentSelectedId] = React.useState<number | null>(null);
   const [incidentFilter, setIncidentFilter] = React.useState({ q: "", status: "", severity: "" });
-  const [incidentForm, setIncidentForm] = React.useState({ title: "", severity: "medium", risk_score: 50, source_tool: "wazuh", alert_id: "", ticket_ref: "", owner_name: "", phase: "new", summary: "" });
+  const [incidentForm, setIncidentForm] = React.useState({ title: "", severity: "medium", risk_score: 50, source_tool: "wazuh", alert_id: "", ticket_ref: "", owner_name: "", phase: "new", summary: "", priority: "P3", sla_due_at: "", escalated: false, close_reason: "", resolution_summary: "" });
   const [incidentEventForm, setIncidentEventForm] = React.useState({ event_type: "note", detail: "" });
   const [incidentMsg, setIncidentMsg] = React.useState("");
   const healthyConnectors = connectors.filter((c) => c.last_status === "ok").length;
   const openIncidents = incidents.filter((i) => i.status !== "resolved").length;
   const highRiskAlerts = alerts.filter((a) => a.severity === "high" || a.severity === "critical").length;
+  const visibleAlertCount = alerts.length || ingestionStatus?.stored_alerts || 0;
   const avgRisk = Math.round((decisions.reduce((sum, d) => sum + d.risk_score, 0) / Math.max(decisions.length, 1)) || 0);
   const severityCounts = ["critical", "high", "medium", "low"].map((severity) => ({
     severity,
@@ -130,6 +135,14 @@ function App() {
       .then((data) => setAlerts(Array.isArray(data) ? data : data.alerts || []))
       .catch(() => setAlerts([]));
   }, [token, connectorMsg, incidentMsg]);
+
+  React.useEffect(() => {
+    if (!token) return;
+    fetch(`${API}/api/v1/ingestion/status`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => setIngestionStatus(data))
+      .catch(() => setIngestionStatus(null));
+  }, [token, ingestionMsg, connectorMsg]);
 
   React.useEffect(() => {
     if (!token || user?.role !== "admin") return;
@@ -201,6 +214,24 @@ function App() {
     refreshConnectors();
   }
 
+  async function syncWazuhNow() {
+    setIngestionMsg("Syncing Wazuh alerts from OpenSearch...");
+    const res = await fetch(`${API}/api/v1/ingestion/wazuh/sync?limit=100&triage=true`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      setIngestionMsg(`Sync failed: ${data.detail?.message || data.detail || "error"}`);
+      return;
+    }
+    setIngestionMsg(`Synced ${data.run?.stored_count || 0} alerts and triaged ${data.run?.triaged_count || 0}. Source: ${data.summary?.source || "opensearch"}`);
+    setAlerts(data.alerts || []);
+    setDecisions(data.decisions || []);
+    const status = await fetch(`${API}/api/v1/ingestion/status`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json());
+    setIngestionStatus(status);
+  }
+
   async function createIncident() {
     if (!incidentForm.title.trim()) {
       setIncidentMsg("Title is required");
@@ -219,7 +250,7 @@ function App() {
     const res = await fetch(`${API}/api/v1/incidents/${incidentId}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ status, note: `set via dashboard to ${status}`, owner_name: incidentForm.owner_name, ticket_ref: incidentForm.ticket_ref, phase: incidentForm.phase }),
+      body: JSON.stringify({ status, note: `set via dashboard to ${status}`, owner_name: incidentForm.owner_name, ticket_ref: incidentForm.ticket_ref, phase: incidentForm.phase, priority: incidentForm.priority, sla_due_at: incidentForm.sla_due_at, escalated: incidentForm.escalated, close_reason: incidentForm.close_reason, resolution_summary: incidentForm.resolution_summary }),
     });
     setIncidentMsg(res.ok ? `Updated incident #${incidentId}` : "Failed to update incident");
   }
@@ -258,6 +289,11 @@ function App() {
       owner_name: user?.full_name || "",
       phase: "new",
       summary: decision?.attack_summary || alert.rule.description,
+      priority: alert.severity === "critical" ? "P1" : alert.severity === "high" ? "P2" : "P3",
+      sla_due_at: "",
+      escalated: alert.severity === "critical",
+      close_reason: "",
+      resolution_summary: "",
     });
     setTab("incidents");
     setIncidentMsg(`Prepared incident form from alert ${alert.alert_id}`);
@@ -396,7 +432,7 @@ function App() {
               <div>
                 <p className="eyebrow">Executive Summary</p>
                 <h2>SOC posture from live Wazuh telemetry</h2>
-                <p>{alerts.length} alerts are available for triage. {highRiskAlerts} are high-risk. Average AI risk is {avgRisk}. {openIncidents} cases remain active.</p>
+	                <p>{visibleAlertCount} alerts are available for triage. {highRiskAlerts} are high-risk. Average AI risk is {avgRisk}. {openIncidents} cases remain active.</p>
               </div>
               <div className="exec-score">
                 <span>Risk Index</span>
@@ -410,6 +446,22 @@ function App() {
               <article className="metric"><span>Triage Decisions</span><strong>{decisions.length}</strong></article>
             </section>
             <section className="dashboard-grid">
+              <article className="panel wide-panel">
+                <div className="section-title">
+                  <div>
+                    <h2>Live Wazuh Ingestion</h2>
+                    <p>Pulls alerts from OpenSearch, normalizes them, stores them, and runs AI triage in one auditable operation.</p>
+                  </div>
+                  <button className="primary-action" onClick={syncWazuhNow} disabled={user.role === "viewer"}>Sync live Wazuh</button>
+                </div>
+                {ingestionMsg ? <p>{ingestionMsg}</p> : null}
+                <div className="ingestion-strip">
+                  <span><b>{ingestionStatus?.stored_alerts || 0}</b><em>stored alerts</em></span>
+                  <span><b>{ingestionStatus?.triage_history || 0}</b><em>triage records</em></span>
+                  <span><b>{ingestionStatus?.last_run?.status || "none"}</b><em>last sync</em></span>
+                  <span><b>{ingestionStatus?.live_source || "unknown"}</b><em>source</em></span>
+                </div>
+              </article>
               <article className="panel">
                 <h2>Alert Severity Distribution</h2>
                 <div className="bar-list">
@@ -460,6 +512,20 @@ function App() {
               <button onClick={seedConnectorsFromEnv}>Seed from env</button>
             </div> : null}
             {connectorMsg ? <p>{connectorMsg}</p> : null}
+            <section className="panel detail-panel">
+              <div className="section-title">
+                <div><h2>Ingestion Control</h2><p>Use this after Wazuh/OpenSearch is configured to fetch live alerts into the persistent store.</p></div>
+                <button className="primary-action" onClick={syncWazuhNow} disabled={user.role === "viewer"}>Sync and triage now</button>
+              </div>
+              {ingestionMsg ? <p>{ingestionMsg}</p> : null}
+              <div className="admin-list">
+                {(ingestionStatus?.runs || []).slice(0, 6).map((run) => (
+                  <article className="admin-item" key={run.id}>
+                    <span>#{run.id} {run.created_at} | {run.status} | fetched={run.fetched_count} stored={run.stored_count} triaged={run.triaged_count} | {run.detail}</span>
+                  </article>
+                ))}
+              </div>
+            </section>
             <div className="connector-grid">
               {connectors.map((c) => (
                 <article key={c.id} className="connector-card">
@@ -604,10 +670,17 @@ function App() {
                 <input placeholder="Source alert id" value={incidentForm.alert_id} onChange={(e) => setIncidentForm({ ...incidentForm, alert_id: e.target.value })} />
                 <input placeholder="Ticket ref" value={incidentForm.ticket_ref} onChange={(e) => setIncidentForm({ ...incidentForm, ticket_ref: e.target.value })} />
                 <input placeholder="Owner" value={incidentForm.owner_name} onChange={(e) => setIncidentForm({ ...incidentForm, owner_name: e.target.value })} />
+                <select value={incidentForm.priority} onChange={(e) => setIncidentForm({ ...incidentForm, priority: e.target.value })}>
+                  <option value="P1">P1 critical</option><option value="P2">P2 high</option><option value="P3">P3 normal</option><option value="P4">P4 low</option>
+                </select>
+                <input placeholder="SLA due time" value={incidentForm.sla_due_at} onChange={(e) => setIncidentForm({ ...incidentForm, sla_due_at: e.target.value })} />
                 <select value={incidentForm.phase} onChange={(e) => setIncidentForm({ ...incidentForm, phase: e.target.value })}>
                   <option value="new">new</option><option value="triage">triage</option><option value="investigation">investigation</option><option value="containment">containment</option><option value="eradication">eradication</option><option value="recovery">recovery</option><option value="closed">closed</option>
                 </select>
+                <label className="checkbox-line"><input type="checkbox" checked={incidentForm.escalated} onChange={(e) => setIncidentForm({ ...incidentForm, escalated: e.target.checked })} /> Escalated</label>
+                <input placeholder="Close reason" value={incidentForm.close_reason} onChange={(e) => setIncidentForm({ ...incidentForm, close_reason: e.target.value })} />
                 <input placeholder="Case summary" value={incidentForm.summary} onChange={(e) => setIncidentForm({ ...incidentForm, summary: e.target.value })} />
+                <input placeholder="Resolution summary" value={incidentForm.resolution_summary} onChange={(e) => setIncidentForm({ ...incidentForm, resolution_summary: e.target.value })} />
                 <button onClick={createIncident}>Create incident</button>
               </div>
             ) : null}
@@ -628,10 +701,12 @@ function App() {
                   {incidents.filter((i) => column.phases.includes(i.phase || "new")).map((i) => (
                     <article className="case-card" key={i.id}>
                       <div>
-                        <strong>#{i.id} {i.title}</strong>
-                        <span>{i.severity} | risk {i.risk_score} | {i.ticket_ref || "no ticket"}</span>
-                        <p>{i.summary || "No summary captured yet."}</p>
-                      </div>
+	                        <strong>#{i.id} {i.title}</strong>
+	                        <span>{i.priority || "P3"} | {i.severity} | risk {i.risk_score} | {i.ticket_ref || "no ticket"}</span>
+	                        <span>owner: {i.owner_name || "unassigned"} | SLA: {i.sla_due_at || "not set"} {i.escalated ? "| escalated" : ""}</span>
+	                        <p>{i.summary || "No summary captured yet."}</p>
+	                        {i.resolution_summary ? <p>Resolution: {i.resolution_summary}</p> : null}
+	                      </div>
                       <div className="incident-actions">
                         <button onClick={() => loadIncidentEvents(i.id)}>Timeline</button>
                         {(user.role === "admin" || user.role === "analyst") ? (

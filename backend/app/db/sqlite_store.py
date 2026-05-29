@@ -40,6 +40,20 @@ def init_db() -> None:
         )
         """
     )
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS ingestion_runs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          source TEXT NOT NULL,
+          status TEXT NOT NULL,
+          detail TEXT DEFAULT '',
+          fetched_count INTEGER DEFAULT 0,
+          stored_count INTEGER DEFAULT 0,
+          triaged_count INTEGER DEFAULT 0,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
     cols = {row["name"] for row in cur.execute("PRAGMA table_info(triage_decisions)").fetchall()}
     if "disposition" not in cols:
         cur.execute("ALTER TABLE triage_decisions ADD COLUMN disposition TEXT DEFAULT ''")
@@ -70,6 +84,13 @@ def list_alerts(limit: int = 100) -> list[NormalizedAlert]:
     ).fetchall()
     conn.close()
     return [NormalizedAlert(**json.loads(row["payload"])) for row in rows]
+
+
+def count_alerts() -> int:
+    conn = get_conn()
+    row = conn.execute("SELECT COUNT(*) AS total FROM alerts").fetchone()
+    conn.close()
+    return int(row["total"] if row else 0)
 
 
 def upsert_triage(decision: TriageDecision) -> None:
@@ -125,3 +146,46 @@ def list_triage_history(limit: int = 100) -> list[TriageHistoryEntry]:
             )
         )
     return entries
+
+
+def record_ingestion_run(
+    source: str,
+    status: str,
+    detail: str = "",
+    fetched_count: int = 0,
+    stored_count: int = 0,
+    triaged_count: int = 0,
+) -> dict:
+    conn = get_conn()
+    cur = conn.execute(
+        """
+        INSERT INTO ingestion_runs(source, status, detail, fetched_count, stored_count, triaged_count, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        """,
+        (source, status, detail[:500], fetched_count, stored_count, triaged_count),
+    )
+    conn.commit()
+    row = conn.execute(
+        """
+        SELECT id, source, status, detail, fetched_count, stored_count, triaged_count, created_at
+        FROM ingestion_runs WHERE id = ?
+        """,
+        (cur.lastrowid,),
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else {}
+
+
+def list_ingestion_runs(limit: int = 20) -> list[dict]:
+    conn = get_conn()
+    rows = conn.execute(
+        """
+        SELECT id, source, status, detail, fetched_count, stored_count, triaged_count, created_at
+        FROM ingestion_runs
+        ORDER BY id DESC
+        LIMIT ?
+        """,
+        (limit,),
+    ).fetchall()
+    conn.close()
+    return [dict(row) for row in rows]

@@ -9,9 +9,12 @@ from app.api.incidents import router as incidents_router
 from app.connectors.opensearch import fetch_recent_wazuh_alerts, opensearch_configured
 from app.db.models import Base
 from app.db.sqlite_store import (
+    count_alerts,
     init_db,
     list_alerts,
+    list_ingestion_runs,
     list_triage_history,
+    record_ingestion_run,
     update_triage_feedback,
     upsert_alert,
     upsert_triage,
@@ -87,6 +90,11 @@ def startup() -> None:
                         owner_name VARCHAR(120) DEFAULT '',
                         phase VARCHAR(40) DEFAULT 'new',
                         summary VARCHAR(1000) DEFAULT '',
+                        priority VARCHAR(20) DEFAULT 'P3',
+                        sla_due_at VARCHAR(60) DEFAULT '',
+                        escalated BOOLEAN DEFAULT 0,
+                        close_reason VARCHAR(120) DEFAULT '',
+                        resolution_summary VARCHAR(1000) DEFAULT '',
                         created_by_user_id INTEGER NOT NULL,
                         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                     )
@@ -110,6 +118,21 @@ def startup() -> None:
                 conn.commit()
             if "summary" not in incident_names:
                 conn.execute(text("ALTER TABLE incidents ADD COLUMN summary VARCHAR(1000) DEFAULT ''"))
+                conn.commit()
+            if "priority" not in incident_names:
+                conn.execute(text("ALTER TABLE incidents ADD COLUMN priority VARCHAR(20) DEFAULT 'P3'"))
+                conn.commit()
+            if "sla_due_at" not in incident_names:
+                conn.execute(text("ALTER TABLE incidents ADD COLUMN sla_due_at VARCHAR(60) DEFAULT ''"))
+                conn.commit()
+            if "escalated" not in incident_names:
+                conn.execute(text("ALTER TABLE incidents ADD COLUMN escalated BOOLEAN DEFAULT 0"))
+                conn.commit()
+            if "close_reason" not in incident_names:
+                conn.execute(text("ALTER TABLE incidents ADD COLUMN close_reason VARCHAR(120) DEFAULT ''"))
+                conn.commit()
+            if "resolution_summary" not in incident_names:
+                conn.execute(text("ALTER TABLE incidents ADD COLUMN resolution_summary VARCHAR(1000) DEFAULT ''"))
                 conn.commit()
         event_cols = conn.execute(text("PRAGMA table_info(incident_events)")).fetchall()
         if not event_cols:
@@ -138,6 +161,30 @@ def startup() -> None:
 app.include_router(auth_router)
 app.include_router(connectors_router)
 app.include_router(incidents_router)
+
+
+async def _sync_wazuh_from_opensearch(limit: int = 100, triage: bool = True) -> dict:
+    response = await fetch_recent_wazuh_alerts(limit=limit)
+    alerts = normalize_wazuh_hits(response)
+    decisions = triage_alerts(alerts) if triage else []
+    for alert in alerts:
+        upsert_alert(alert)
+    for decision in decisions:
+        upsert_triage(decision)
+    run = record_ingestion_run(
+        source="opensearch:wazuh-alerts",
+        status="success",
+        detail=f"synced {len(alerts)} alerts from OpenSearch",
+        fetched_count=len(alerts),
+        stored_count=len(alerts),
+        triaged_count=len(decisions),
+    )
+    return {
+        "run": run,
+        "summary": summarize_alerts(alerts, source="opensearch:wazuh-alerts"),
+        "alerts": [alert.model_dump() for alert in alerts],
+        "decisions": [decision.model_dump() for decision in decisions],
+    }
 
 
 @app.get("/health")
@@ -291,8 +338,41 @@ async def recent_wazuh_alerts(
     for alert in alerts:
         upsert_alert(alert)
     return {
-        "summary": summarize_alerts(alerts),
+        "summary": summarize_alerts(alerts, source="opensearch:wazuh-alerts"),
         "alerts": [alert.model_dump() for alert in alerts],
+    }
+
+
+@app.post("/api/v1/ingestion/wazuh/sync")
+async def sync_wazuh_alerts(
+    limit: int = 100,
+    triage: bool = True,
+    _: Session = Depends(require_role("admin", "analyst")),
+) -> dict:
+    if limit < 1 or limit > 500:
+        raise HTTPException(status_code=400, detail="limit must be between 1 and 500")
+    try:
+        return await _sync_wazuh_from_opensearch(limit=limit, triage=triage)
+    except RuntimeError as exc:
+        run = record_ingestion_run("opensearch:wazuh-alerts", "error", str(exc))
+        raise HTTPException(status_code=400, detail={"message": str(exc), "run": run}) from exc
+    except Exception as exc:
+        run = record_ingestion_run("opensearch:wazuh-alerts", "error", f"OpenSearch sync failed: {exc}")
+        raise HTTPException(status_code=502, detail={"message": f"OpenSearch sync failed: {exc}", "run": run}) from exc
+
+
+@app.get("/api/v1/ingestion/status")
+def ingestion_status(
+    limit: int = 20,
+    _: Session = Depends(require_role("admin", "analyst", "viewer")),
+) -> dict:
+    runs = list_ingestion_runs(limit=limit)
+    return {
+        "stored_alerts": count_alerts(),
+        "triage_history": len(list_triage_history(limit=1000)),
+        "last_run": runs[0] if runs else None,
+        "runs": runs,
+        "live_source": "opensearch:wazuh-alerts" if opensearch_configured() else "not_configured",
     }
 
 

@@ -28,6 +28,11 @@ def _out(i: Incident) -> IncidentOut:
         owner_name=i.owner_name,
         phase=i.phase,
         summary=i.summary,
+        priority=i.priority,
+        sla_due_at=i.sla_due_at,
+        escalated=i.escalated,
+        close_reason=i.close_reason,
+        resolution_summary=i.resolution_summary,
         created_by_user_id=i.created_by_user_id,
         created_at=i.created_at.isoformat() if i.created_at else "",
     )
@@ -72,6 +77,11 @@ def create_incident(
         owner_name=payload.owner_name,
         phase=payload.phase,
         summary=payload.summary,
+        priority=payload.priority,
+        sla_due_at=payload.sla_due_at,
+        escalated=payload.escalated,
+        close_reason=payload.close_reason,
+        resolution_summary=payload.resolution_summary,
         status="open",
         created_by_user_id=user.id,
     )
@@ -101,6 +111,16 @@ def update_incident_status(
         row.ticket_ref = payload.ticket_ref
     if payload.phase:
         row.phase = payload.phase
+    if payload.priority:
+        row.priority = payload.priority
+    if payload.sla_due_at:
+        row.sla_due_at = payload.sla_due_at
+    if payload.escalated is not None:
+        row.escalated = payload.escalated
+    if payload.close_reason:
+        row.close_reason = payload.close_reason
+    if payload.resolution_summary:
+        row.resolution_summary = payload.resolution_summary
     db.add(IncidentEvent(incident_id=row.id, event_type="status_change", detail=payload.note or payload.status, actor_user_id=user.id))
     _audit(db, user, "update_incident_status", str(row.id), payload.status)
     db.commit()

@@ -17,13 +17,13 @@ def load_normalized_sample_alerts() -> list[NormalizedAlert]:
     return [normalize_wazuh_alert(alert) for alert in load_sample_wazuh_alerts()]
 
 
-def summarize_alerts(alerts: list[NormalizedAlert]) -> dict[str, Any]:
+def summarize_alerts(alerts: list[NormalizedAlert], source: str = "sample-wazuh-fixtures") -> dict[str, Any]:
     severity_counts = {"low": 0, "medium": 0, "high": 0, "critical": 0}
     for alert in alerts:
         severity_counts[alert.severity] += 1
     return {
         "total_alerts": len(alerts),
-        "source": "sample-wazuh-fixtures",
+        "source": source,
         "severity_counts": severity_counts,
         "unique_assets": len({alert.asset.hostname for alert in alerts if alert.asset.hostname}),
         "ready_for_dashboard": True,

@@ -11,6 +11,11 @@ class IncidentCreateRequest(BaseModel):
     owner_name: str = ""
     phase: str = "new"
     summary: str = ""
+    priority: str = "P3"
+    sla_due_at: str = ""
+    escalated: bool = False
+    close_reason: str = ""
+    resolution_summary: str = ""
 
 
 class IncidentOut(BaseModel):
@@ -25,6 +30,11 @@ class IncidentOut(BaseModel):
     owner_name: str
     phase: str
     summary: str
+    priority: str = "P3"
+    sla_due_at: str = ""
+    escalated: bool = False
+    close_reason: str = ""
+    resolution_summary: str = ""
     created_by_user_id: int
     created_at: str
 
@@ -35,6 +45,11 @@ class IncidentStatusUpdateRequest(BaseModel):
     owner_name: str = ""
     ticket_ref: str = ""
     phase: str = ""
+    priority: str = ""
+    sla_due_at: str = ""
+    escalated: bool | None = None
+    close_reason: str = ""
+    resolution_summary: str = ""
 
 
 class IncidentEventCreateRequest(BaseModel):

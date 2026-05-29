@@ -75,7 +75,8 @@ li {
 .login-card button,
 .admin-form button,
 .triage-feedback button,
-.detail-grid button {
+.detail-grid button,
+.primary-action {
   min-height: 38px;
   border: 0;
   border-radius: 8px;
@@ -83,6 +84,13 @@ li {
   color: #ffffff;
   font-weight: 700;
   padding: 0 12px;
+}
+
+.primary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 
 .secondary-button {
@@ -364,10 +372,36 @@ h3 {
 .bar-list,
 .mini-list,
 .compact-feed,
-.admin-list {
+.admin-list,
+.ingestion-strip {
   display: grid;
   gap: 10px;
   margin-top: 14px;
+}
+
+.ingestion-strip {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.ingestion-strip span {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 12px;
+}
+
+.ingestion-strip b {
+  color: #101828;
+}
+
+.ingestion-strip em {
+  color: #667085;
+  font-size: 12px;
+  font-style: normal;
+  text-transform: uppercase;
 }
 
 .bar-row {
@@ -461,6 +495,23 @@ h3 {
   color: #344054;
   padding: 0 10px;
   white-space: nowrap;
+}
+
+.checkbox-line {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #344054;
+  padding: 0 10px;
+}
+
+.checkbox-line input {
+  width: 16px;
+  height: 16px;
 }
 
 .connector-card {
@@ -699,7 +750,8 @@ h3 {
   .panel-grid,
   .dashboard-grid,
   .connector-grid,
-  .detail-grid {
+  .detail-grid,
+  .ingestion-strip {
     grid-template-columns: 1fr;
   }
 
@@ -758,6 +810,7 @@ h3 {
   .connector-grid,
   .pipeline,
   .detail-grid,
+  .ingestion-strip,
   .admin-form,
   .compact-feed button,
   .mini-list span,

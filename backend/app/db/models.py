@@ -77,6 +77,11 @@ class Incident(Base):
     owner_name: Mapped[str] = mapped_column(String(120), default="")
     phase: Mapped[str] = mapped_column(String(40), default="new", index=True)
     summary: Mapped[str] = mapped_column(String(1000), default="")
+    priority: Mapped[str] = mapped_column(String(20), default="P3", index=True)
+    sla_due_at: Mapped[str] = mapped_column(String(60), default="")
+    escalated: Mapped[bool] = mapped_column(Boolean, default=False)
+    close_reason: Mapped[str] = mapped_column(String(120), default="")
+    resolution_summary: Mapped[str] = mapped_column(String(1000), default="")
     created_by_user_id: Mapped[int] = mapped_column(index=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
