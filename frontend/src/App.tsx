@@ -33,6 +33,18 @@ type TriageDecision = {
   risk_score: number;
   attack_summary: string;
   evidence: string[];
+  analyst_priority: string;
+  queue: string;
+  noise_score: number;
+  signal_score: number;
+  suppression_decision: string;
+  suppression_reason: string;
+  correlation_key: string;
+  correlation_count: number;
+  related_alert_count: number;
+  entity_frequency: Record<string, number>;
+  escalation_reason: string;
+  tuning_recommendation: string;
   impacted_entities: string[];
   investigation_steps: string[];
   containment_steps: string[];
@@ -44,6 +56,7 @@ type TriageDecision = {
   from_cache: boolean;
 };
 type TriageHistory = { alert_id: string; decision: TriageDecision | null; disposition: string; note: string; updated_at: string };
+type NoiseSummary = { total_alerts: number; suppressed_noise: number; grouped_duplicates: number; escalated_signals: number; review_items: number; estimated_analyst_items: number; estimated_noise_reduction_percent: number; strategy: string };
 
 const verdictClass: Record<TriageDecision["verdict"], string> = {
   false_positive: "sev-low",
@@ -64,6 +77,7 @@ function App() {
   const [loading, setLoading] = React.useState(false);
   const [tab, setTab] = React.useState<"overview" | "connectors" | "triage" | "incidents" | "automation" | "admin">("overview");
   const [decisions, setDecisions] = React.useState<TriageDecision[]>([]);
+  const [noiseSummary, setNoiseSummary] = React.useState<NoiseSummary | null>(null);
   const [triageHistory, setTriageHistory] = React.useState<TriageHistory[]>([]);
   const [triageFeedback, setTriageFeedback] = React.useState({ disposition: "needs_investigation", note: "" });
   const [alerts, setAlerts] = React.useState<AlertRecord[]>([]);
@@ -126,6 +140,10 @@ function App() {
       .then((r) => r.json())
       .then((data) => setTriageHistory(Array.isArray(data) ? data : []))
       .catch(() => setTriageHistory([]));
+    fetch(`${API}/triage/noise-reduction?limit=100`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => setNoiseSummary(data.summary || null))
+      .catch(() => setNoiseSummary(null));
   }, [token]);
 
   React.useEffect(() => {
@@ -228,6 +246,7 @@ function App() {
     setIngestionMsg(`Synced ${data.run?.stored_count || 0} alerts and triaged ${data.run?.triaged_count || 0}. Source: ${data.summary?.source || "opensearch"}`);
     setAlerts(data.alerts || []);
     setDecisions(data.decisions || []);
+    setNoiseSummary(data.noise_reduction || null);
     const status = await fetch(`${API}/api/v1/ingestion/status`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json());
     setIngestionStatus(status);
   }
@@ -439,12 +458,12 @@ function App() {
                 <strong>{avgRisk}</strong>
               </div>
             </section>
-            <section className="metric-grid">
-              <article className="metric"><span>Connectors</span><strong>{connectors.length}</strong></article>
-              <article className="metric"><span>Healthy Connectors</span><strong>{healthyConnectors}</strong></article>
-              <article className="metric"><span>Open Incidents</span><strong>{openIncidents}</strong></article>
-              <article className="metric"><span>Triage Decisions</span><strong>{decisions.length}</strong></article>
-            </section>
+	            <section className="metric-grid">
+	              <article className="metric"><span>Connectors</span><strong>{connectors.length}</strong></article>
+	              <article className="metric"><span>Healthy Connectors</span><strong>{healthyConnectors}</strong></article>
+	              <article className="metric"><span>Open Incidents</span><strong>{openIncidents}</strong></article>
+	              <article className="metric"><span>Noise Reduction</span><strong>{noiseSummary?.estimated_noise_reduction_percent ?? 0}%</strong></article>
+	            </section>
             <section className="dashboard-grid">
               <article className="panel wide-panel">
                 <div className="section-title">
@@ -473,6 +492,16 @@ function App() {
                     </div>
                   ))}
                 </div>
+              </article>
+              <article className="panel">
+                <h2>Noise Reduction Engine</h2>
+                <div className="triage-score-grid">
+                  <span><b>{noiseSummary?.total_alerts || 0}</b><em>raw alerts</em></span>
+                  <span><b>{noiseSummary?.estimated_analyst_items || 0}</b><em>analyst items</em></span>
+                  <span><b>{noiseSummary?.suppressed_noise || 0}</b><em>suppressed</em></span>
+                  <span><b>{noiseSummary?.escalated_signals || 0}</b><em>escalated</em></span>
+                </div>
+                <p>{noiseSummary?.strategy || "Batch-aware correlation will appear after triage runs."}</p>
               </article>
               <article className="panel">
                 <h2>Connector Status</h2>
@@ -565,18 +594,18 @@ function App() {
               <div><h2>AI Triage Workbench</h2><p>Analyst view with evidence, MITRE context, raw event data, and case handoff.</p></div>
               <span className="status-pill">{decisions.length} decisions</span>
             </div>
-            <div className="alert-table">
-              <div className="table-head"><span>Alert</span><span>Verdict</span><span>Confidence</span><span>Risk</span><span>SOAR</span></div>
-              {decisions.map((d, index) => (
-                <article className="alert-row" key={`${d.alert_id}-${index}`} onClick={() => setSelectedAlertId(d.alert_id)}>
-                  <span><strong>{d.alert_id}</strong>{d.attack_summary}</span>
-                  <span className={`severity ${verdictClass[d.verdict]}`}>{d.verdict}</span>
-                  <span>{d.confidence}</span>
-                  <span>{d.risk_score}</span>
-                  <span>{d.soar_recommendation}{d.from_cache ? " (cache)" : ""}</span>
-                </article>
-              ))}
-            </div>
+	            <div className="alert-table">
+	              <div className="table-head"><span>Alert</span><span>Verdict</span><span>Signal</span><span>Noise</span><span>Queue</span></div>
+	              {decisions.map((d, index) => (
+	                <article className="alert-row" key={`${d.alert_id}-${index}`} onClick={() => setSelectedAlertId(d.alert_id)}>
+	                  <span><strong>{d.alert_id}</strong>{d.attack_summary}</span>
+	                  <span className={`severity ${verdictClass[d.verdict]}`}>{d.verdict}</span>
+	                  <span>{d.signal_score || d.risk_score} / {d.analyst_priority || "P3"}</span>
+	                  <span>{d.noise_score || 0} / {d.suppression_decision || "review"}</span>
+	                  <span>{d.queue || d.soar_recommendation}{d.from_cache ? " (cache)" : ""}</span>
+	                </article>
+	              ))}
+	            </div>
             {selectedAlertId ? (
               <section className="panel detail-panel">
                 <h3>Alert Detail {selectedAlertId}</h3>
@@ -587,13 +616,18 @@ function App() {
                   if (!alert || !decision) return <p>Alert detail unavailable.</p>;
                   return (
                     <div className="detail-grid">
-                      <article>
-                        <strong>Investigation Context</strong>
-                        <p>{decision.attack_summary}</p>
-                        <p>Asset: {alert.asset.hostname || "-"} | User: {alert.user.name || "-"} | Source IP: {alert.network.src_ip || "-"}</p>
-                        <p>MITRE: {(decision.mitre.techniques || alert.mitre.techniques).join(", ") || "-"}</p>
-                        <p>Disposition: {history?.disposition || "not reviewed"} {history?.updated_at ? `| ${history.updated_at}` : ""}</p>
-                      </article>
+	                      <article>
+	                        <strong>Investigation Context</strong>
+	                        <p>{decision.attack_summary}</p>
+	                        <p>Priority: {decision.analyst_priority || "P3"} | Queue: {decision.queue || "review"} | Signal: {decision.signal_score || decision.risk_score} | Noise: {decision.noise_score || 0}</p>
+	                        <p>Suppression: {decision.suppression_decision || "review"} - {decision.suppression_reason || "requires analyst review"}</p>
+	                        <p>Correlation: {decision.correlation_count || 1} matching alerts | Related entity max: {decision.related_alert_count || 1}</p>
+	                        <p>Asset: {alert.asset.hostname || "-"} | User: {alert.user.name || "-"} | Source IP: {alert.network.src_ip || "-"}</p>
+	                        <p>MITRE: {(decision.mitre.techniques || alert.mitre.techniques).join(", ") || "-"}</p>
+	                        <p>Disposition: {history?.disposition || "not reviewed"} {history?.updated_at ? `| ${history.updated_at}` : ""}</p>
+	                        {decision.escalation_reason ? <p>Escalation: {decision.escalation_reason}</p> : null}
+	                        {decision.tuning_recommendation ? <p>Tuning: {decision.tuning_recommendation}</p> : null}
+	                      </article>
                       <article>
                         <strong>Evidence</strong>
                         <ul className="check-list">{decision.evidence.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul>

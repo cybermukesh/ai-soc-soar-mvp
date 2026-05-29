@@ -24,7 +24,7 @@ from app.connectors.wazuh import normalize_wazuh_alert, normalize_wazuh_hits
 from app.models.triage import TriageBatchResponse, TriageFeedbackRequest, TriageHistoryEntry, TriageRequest
 from app.services.alert_store import load_normalized_sample_alerts, summarize_alerts
 from app.services.auth import ensure_admin_seed
-from app.services.triage import triage_alert, triage_alerts, triage_cache_size
+from app.services.triage import noise_reduction_summary, triage_alert, triage_alerts, triage_cache_size
 
 app = FastAPI(
     title="AI SOC SOAR MVP",
@@ -182,6 +182,7 @@ async def _sync_wazuh_from_opensearch(limit: int = 100, triage: bool = True) -> 
     return {
         "run": run,
         "summary": summarize_alerts(alerts, source="opensearch:wazuh-alerts"),
+        "noise_reduction": noise_reduction_summary(decisions),
         "alerts": [alert.model_dump() for alert in alerts],
         "decisions": [decision.model_dump() for decision in decisions],
     }
@@ -296,6 +297,32 @@ def triage_recent_alerts(
         upsert_alert(alert)
         upsert_triage(decision)
     return TriageBatchResponse(decisions=decisions)
+
+
+@app.get("/triage/noise-reduction")
+def triage_noise_reduction(
+    limit: int = 100,
+    force_refresh: bool = False,
+    _: Session = Depends(require_role("admin", "analyst", "viewer")),
+) -> dict:
+    alerts = list_alerts(limit=limit)
+    if not alerts:
+        alerts = load_normalized_sample_alerts()
+    decisions = triage_alerts(alerts, force_refresh=force_refresh)
+    for alert, decision in zip(alerts, decisions):
+        upsert_alert(alert)
+        upsert_triage(decision)
+    return {
+        "summary": noise_reduction_summary(decisions),
+        "top_signals": [
+            decision.model_dump()
+            for decision in sorted(decisions, key=lambda item: (item.signal_score, item.risk_score), reverse=True)[:10]
+        ],
+        "top_noise": [
+            decision.model_dump()
+            for decision in sorted(decisions, key=lambda item: item.noise_score, reverse=True)[:10]
+        ],
+    }
 
 
 @app.get("/triage/history", response_model=list[TriageHistoryEntry])

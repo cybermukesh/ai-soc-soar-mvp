@@ -373,17 +373,20 @@ h3 {
 .mini-list,
 .compact-feed,
 .admin-list,
-.ingestion-strip {
+.ingestion-strip,
+.triage-score-grid {
   display: grid;
   gap: 10px;
   margin-top: 14px;
 }
 
-.ingestion-strip {
+.ingestion-strip,
+.triage-score-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
-.ingestion-strip span {
+.ingestion-strip span,
+.triage-score-grid span {
   min-width: 0;
   display: grid;
   gap: 4px;
@@ -393,11 +396,13 @@ h3 {
   padding: 12px;
 }
 
-.ingestion-strip b {
+.ingestion-strip b,
+.triage-score-grid b {
   color: #101828;
 }
 
-.ingestion-strip em {
+.ingestion-strip em,
+.triage-score-grid em {
   color: #667085;
   font-size: 12px;
   font-style: normal;
@@ -751,7 +756,8 @@ h3 {
   .dashboard-grid,
   .connector-grid,
   .detail-grid,
-  .ingestion-strip {
+  .ingestion-strip,
+  .triage-score-grid {
     grid-template-columns: 1fr;
   }
 
@@ -811,6 +817,7 @@ h3 {
   .pipeline,
   .detail-grid,
   .ingestion-strip,
+  .triage-score-grid,
   .admin-form,
   .compact-feed button,
   .mini-list span,

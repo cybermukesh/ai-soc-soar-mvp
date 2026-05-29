@@ -22,6 +22,18 @@ class TriageDecision(BaseModel):
     attack_summary: str
     evidence: list[str] = Field(default_factory=list)
     mitre: dict[str, list[str]] = Field(default_factory=dict)
+    analyst_priority: str = "P3"
+    queue: str = "review"
+    noise_score: int = Field(default=0, ge=0, le=100)
+    signal_score: int = Field(default=50, ge=0, le=100)
+    suppression_decision: str = "review"
+    suppression_reason: str = ""
+    correlation_key: str = ""
+    correlation_count: int = 1
+    related_alert_count: int = 1
+    entity_frequency: dict[str, int] = Field(default_factory=dict)
+    escalation_reason: str = ""
+    tuning_recommendation: str = ""
     impacted_entities: list[str] = Field(default_factory=list)
     investigation_steps: list[str] = Field(default_factory=list)
     containment_steps: list[str] = Field(default_factory=list)
