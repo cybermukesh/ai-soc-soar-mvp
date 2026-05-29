@@ -30,9 +30,18 @@ type TriageDecision = {
   confidence: number;
   risk_score: number;
   attack_summary: string;
+  evidence: string[];
+  impacted_entities: string[];
+  investigation_steps: string[];
+  containment_steps: string[];
+  resolution_criteria: string[];
+  analyst_questions: string[];
+  recommended_actions: string[];
+  mitre: { tactics?: string[]; techniques?: string[] };
   soar_recommendation: string;
   from_cache: boolean;
 };
+type TriageHistory = { alert_id: string; decision: TriageDecision | null; disposition: string; note: string; updated_at: string };
 
 const verdictClass: Record<TriageDecision["verdict"], string> = {
   false_positive: "sev-low",
@@ -53,6 +62,8 @@ function App() {
   const [loading, setLoading] = React.useState(false);
   const [tab, setTab] = React.useState<"overview" | "connectors" | "triage" | "incidents" | "automation" | "admin">("overview");
   const [decisions, setDecisions] = React.useState<TriageDecision[]>([]);
+  const [triageHistory, setTriageHistory] = React.useState<TriageHistory[]>([]);
+  const [triageFeedback, setTriageFeedback] = React.useState({ disposition: "needs_investigation", note: "" });
   const [alerts, setAlerts] = React.useState<AlertRecord[]>([]);
   const [selectedAlertId, setSelectedAlertId] = React.useState<string>("");
 
@@ -106,6 +117,10 @@ function App() {
       .then((r) => r.json())
       .then((data) => setDecisions(data.decisions || []))
       .catch(() => setDecisions([]));
+    fetch(`${API}/triage/history?limit=50`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => setTriageHistory(Array.isArray(data) ? data : []))
+      .catch(() => setTriageHistory([]));
   }, [token]);
 
   React.useEffect(() => {
@@ -246,6 +261,19 @@ function App() {
     });
     setTab("incidents");
     setIncidentMsg(`Prepared incident form from alert ${alert.alert_id}`);
+  }
+
+  async function saveTriageFeedback(alertId: string) {
+    const res = await fetch(`${API}/triage/feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ alert_id: alertId, disposition: triageFeedback.disposition, note: triageFeedback.note }),
+    });
+    if (res.ok) {
+      const history = await fetch(`${API}/triage/history?limit=50`, { headers: { Authorization: `Bearer ${token}` } }).then((r) => r.json());
+      setTriageHistory(Array.isArray(history) ? history : []);
+      setTriageFeedback({ disposition: "needs_investigation", note: "" });
+    }
   }
 
   async function login() {
@@ -489,6 +517,7 @@ function App() {
                 {(() => {
                   const alert = alerts.find((item) => item.alert_id === selectedAlertId);
                   const decision = decisions.find((item) => item.alert_id === selectedAlertId);
+                  const history = triageHistory.find((item) => item.alert_id === selectedAlertId);
                   if (!alert || !decision) return <p>Alert detail unavailable.</p>;
                   return (
                     <div className="detail-grid">
@@ -496,13 +525,42 @@ function App() {
                         <strong>Investigation Context</strong>
                         <p>{decision.attack_summary}</p>
                         <p>Asset: {alert.asset.hostname || "-"} | User: {alert.user.name || "-"} | Source IP: {alert.network.src_ip || "-"}</p>
-                        <p>MITRE: {alert.mitre.techniques.join(", ") || "-"}</p>
+                        <p>MITRE: {(decision.mitre.techniques || alert.mitre.techniques).join(", ") || "-"}</p>
+                        <p>Disposition: {history?.disposition || "not reviewed"} {history?.updated_at ? `| ${history.updated_at}` : ""}</p>
                       </article>
                       <article>
                         <strong>Evidence</strong>
                         <ul className="check-list">{decision.evidence.map((item) => <li key={item}>{item}</li>)}</ul>
+                        <strong>Impacted Entities</strong>
+                        <ul className="check-list">{decision.impacted_entities.map((item) => <li key={item}>{item}</li>)}</ul>
+                      </article>
+                      <article>
+                        <strong>L2 Investigation Steps</strong>
+                        <ol className="check-list">{decision.investigation_steps.map((item) => <li key={item}>{item}</li>)}</ol>
                         <strong>Recommended Actions</strong>
                         <ul className="check-list">{decision.recommended_actions.map((item) => <li key={item}>{item}</li>)}</ul>
+                      </article>
+                      <article>
+                        <strong>Containment Steps</strong>
+                        <ul className="check-list">{decision.containment_steps.map((item) => <li key={item}>{item}</li>)}</ul>
+                        <strong>Resolution Criteria</strong>
+                        <ul className="check-list">{decision.resolution_criteria.map((item) => <li key={item}>{item}</li>)}</ul>
+                      </article>
+                      <article>
+                        <strong>Analyst Questions</strong>
+                        <ul className="check-list">{decision.analyst_questions.map((item) => <li key={item}>{item}</li>)}</ul>
+                        <div className="triage-feedback">
+                          <select value={triageFeedback.disposition} onChange={(e) => setTriageFeedback({ ...triageFeedback, disposition: e.target.value })}>
+                            <option value="needs_investigation">needs investigation</option>
+                            <option value="true_positive">true positive</option>
+                            <option value="false_positive">false positive</option>
+                            <option value="duplicate">duplicate</option>
+                            <option value="resolved">resolved</option>
+                          </select>
+                          <input placeholder="Analyst note / resolution summary" value={triageFeedback.note} onChange={(e) => setTriageFeedback({ ...triageFeedback, note: e.target.value })} />
+                          <button onClick={() => saveTriageFeedback(alert.alert_id)}>Save review</button>
+                        </div>
+                        {history?.note ? <p>Last note: {history.note}</p> : null}
                       </article>
                       <article className="raw-event">
                         <strong>Raw Event Access</strong>
@@ -516,6 +574,16 @@ function App() {
                 })()}
               </section>
             ) : null}
+            <section className="panel detail-panel">
+              <h3>Triage Review History</h3>
+              <div className="admin-list">
+                {triageHistory.slice(0, 12).map((item) => (
+                  <article className="admin-item" key={`${item.alert_id}-${item.updated_at}`}>
+                    <span>{item.updated_at || "-"} | {item.alert_id} | {item.disposition || "pending"} | {item.note || "no note"}</span>
+                  </article>
+                ))}
+              </div>
+            </section>
           </section>
         ) : null}
 

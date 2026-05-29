@@ -22,6 +22,11 @@ class TriageDecision(BaseModel):
     attack_summary: str
     evidence: list[str] = Field(default_factory=list)
     mitre: dict[str, list[str]] = Field(default_factory=dict)
+    impacted_entities: list[str] = Field(default_factory=list)
+    investigation_steps: list[str] = Field(default_factory=list)
+    containment_steps: list[str] = Field(default_factory=list)
+    resolution_criteria: list[str] = Field(default_factory=list)
+    analyst_questions: list[str] = Field(default_factory=list)
     recommended_actions: list[str] = Field(default_factory=list)
     soar_recommendation: str = ""
     model_used: str = "gpt-4o-mini"
@@ -35,3 +40,17 @@ class TriageRequest(BaseModel):
 
 class TriageBatchResponse(BaseModel):
     decisions: list[TriageDecision]
+
+
+class TriageFeedbackRequest(BaseModel):
+    alert_id: str
+    disposition: str
+    note: str = ""
+
+
+class TriageHistoryEntry(BaseModel):
+    alert_id: str
+    decision: TriageDecision | None = None
+    disposition: str = ""
+    note: str = ""
+    updated_at: str = ""

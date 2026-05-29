@@ -8,10 +8,17 @@ from app.api.connectors import router as connectors_router
 from app.api.incidents import router as incidents_router
 from app.connectors.opensearch import fetch_recent_wazuh_alerts, opensearch_configured
 from app.db.models import Base
-from app.db.sqlite_store import init_db, list_alerts, upsert_alert, upsert_triage
+from app.db.sqlite_store import (
+    init_db,
+    list_alerts,
+    list_triage_history,
+    update_triage_feedback,
+    upsert_alert,
+    upsert_triage,
+)
 from app.db.session import engine, SessionLocal
 from app.connectors.wazuh import normalize_wazuh_alert, normalize_wazuh_hits
-from app.models.triage import TriageBatchResponse, TriageRequest
+from app.models.triage import TriageBatchResponse, TriageFeedbackRequest, TriageHistoryEntry, TriageRequest
 from app.services.alert_store import load_normalized_sample_alerts, summarize_alerts
 from app.services.auth import ensure_admin_seed
 from app.services.triage import triage_alert, triage_alerts, triage_cache_size
@@ -242,6 +249,23 @@ def triage_recent_alerts(
         upsert_alert(alert)
         upsert_triage(decision)
     return TriageBatchResponse(decisions=decisions)
+
+
+@app.get("/triage/history", response_model=list[TriageHistoryEntry])
+def triage_history(
+    limit: int = 100,
+    _: Session = Depends(require_role("admin", "analyst", "viewer")),
+) -> list[TriageHistoryEntry]:
+    return list_triage_history(limit=limit)
+
+
+@app.post("/triage/feedback")
+def triage_feedback(
+    payload: TriageFeedbackRequest,
+    _: Session = Depends(require_role("admin", "analyst")),
+) -> dict:
+    update_triage_feedback(payload.alert_id, payload.disposition, payload.note)
+    return {"status": "ok"}
 
 
 @app.post("/alerts/normalize")
