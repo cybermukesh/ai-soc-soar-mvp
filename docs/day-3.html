@@ -1,1 +1,92 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Day 3</title><link rel="stylesheet" href="style.css"></head><body><div class="layout"><aside class="sidebar"><div class="brand">AI SOC SOAR MVP</div><div class="sub">GitBook-style judge docs</div><nav class="menu"><a href="index.html">Overview</a><a href="day-1.html">Day 1</a><a href="day-2.html">Day 2</a><a class="active" href="day-3.html">Day 3</a><a href="day-4.html">Day 4</a><a href="day-5.html">Day 5</a><a href="day-6.html">Day 6</a><a href="day-7.html">Day 7</a></nav></aside><main class="content"><section class="hero"><p class="kicker">Day 3</p><h1>Wazuh + Connector Operations Layer</h1><span class="status done">Completed</span><p>Connector operations are production-lean for MVP: persisted config, audit trail, history, and live connectivity probes.</p></section><section class="panel"><h2>Completed Work</h2><ul><li>Connector model with status, error, latency, and timestamps.</li><li>Connector APIs: list, upsert, health, seed-from-env, history.</li><li>Connector health history table for repeated checks.</li><li>Connector audit events for update/check/seed actions.</li><li>Live connectivity checks added for Wazuh API (token + manager status).</li><li>Live connectivity checks added for OpenSearch cluster health.</li><li>Recent alert endpoint hardened with clear 400/502 failures instead of raw 500.</li></ul></section><section class="panel"><h2>Evidence Endpoints</h2><ul><li><code>GET /api/v1/connectors/wazuh/health</code></li><li><code>GET /api/v1/connectors/opensearch/health</code></li><li><code>GET /api/v1/connectors/{name}/history</code></li><li><code>GET /alerts/wazuh/recent?limit=25</code></li></ul></section></main></div></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Day 3 - Wazuh Pipeline</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">AI SOC SOAR MVP</div>
+      <div class="sub">GitBook-style judge docs</div>
+      <nav class="menu">
+        <a href="index.html">Overview</a>
+        <a href="day-1.html">Day 1</a>
+        <a href="day-2.html">Day 2</a>
+        <a class="active" href="day-3.html">Day 3</a>
+        <a href="day-4.html">Day 4</a>
+        <a href="day-5.html">Day 5</a>
+        <a href="day-6.html">Day 6</a>
+        <a href="day-7.html">Day 7</a>
+      </nav>
+    </aside>
+    <main class="content">
+      <section class="hero">
+        <p class="kicker">Day 3</p>
+        <h1>Wazuh + OpenSearch Ingestion Pipeline</h1>
+        <span class="status done">Completed</span>
+        <p>Day 3 moved the product from static alert preview to a real Wazuh-first ingestion path: connector config, live health checks, OpenSearch alert fetch, normalization, persistence, triage handoff, and auditable sync runs.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Connector Operations Completed</h2>
+        <ul>
+          <li>Connector persistence for name, type, base URL, username, masked secret, enabled state, health status, latency, and last checked time.</li>
+          <li>Admin-only connector upsert API with URL, username, and password validation before enabling a connector.</li>
+          <li>Environment seeding action for Wazuh and OpenSearch connectors.</li>
+          <li>Connector setup summary endpoint to show readiness and missing required fields.</li>
+          <li>Connector audit events for create/update, seed, and health-check actions.</li>
+          <li>Connector health history table for repeated operational checks.</li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>Live Wazuh/OpenSearch Work Completed</h2>
+        <ul>
+          <li>Wazuh API health probe authenticates and verifies manager status.</li>
+          <li>OpenSearch health probe checks cluster health and returns cluster status.</li>
+          <li>OpenSearch query reads from the Wazuh alert index pattern.</li>
+          <li>Wazuh hits are normalized into the internal alert schema: rule, asset, user, network, MITRE, severity, raw event.</li>
+          <li>Normalized alerts are persisted in the local runtime database.</li>
+          <li>Live alert summaries now correctly identify the source as <code>opensearch:wazuh-alerts</code>, not sample fixtures.</li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>New Ingestion Workflow</h2>
+        <ul>
+          <li><code>POST /api/v1/ingestion/wazuh/sync</code> fetches OpenSearch alerts, normalizes them, stores them, runs triage, and records an ingestion run.</li>
+          <li><code>GET /api/v1/ingestion/status</code> exposes stored alert count, triage record count, last run, run history, and active live source.</li>
+          <li>Ingestion run records include status, detail, fetched count, stored count, triaged count, source, and timestamp.</li>
+          <li>Verified run: fetched 5 live Wazuh alerts, stored 5, triaged 5, and recorded ingestion run <code>#1</code>.</li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>Frontend Work Completed</h2>
+        <ul>
+          <li>Live Wazuh Ingestion panel added to the executive dashboard.</li>
+          <li>Sync button added for analysts/admins to pull live Wazuh alerts on demand.</li>
+          <li>Stored alerts, triage records, last sync status, and live source are visible in the UI.</li>
+          <li>Connector page includes ingestion control and recent ingestion run history.</li>
+          <li>UI remains responsive with no horizontal overflow in the current browser viewport.</li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>Evidence Endpoints</h2>
+        <ul>
+          <li><code>GET /api/v1/connectors/wazuh/health</code></li>
+          <li><code>GET /api/v1/connectors/opensearch/health</code></li>
+          <li><code>GET /api/v1/connectors/{name}/history</code></li>
+          <li><code>GET /alerts/wazuh/recent?limit=25</code></li>
+          <li><code>POST /api/v1/ingestion/wazuh/sync?limit=100&amp;triage=true</code></li>
+          <li><code>GET /api/v1/ingestion/status</code></li>
+        </ul>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

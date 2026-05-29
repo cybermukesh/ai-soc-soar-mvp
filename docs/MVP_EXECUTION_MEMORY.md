@@ -72,12 +72,21 @@ It is intentionally detailed and operational (not pitch-level).
 - [x] persist normalized alerts
 - [x] return dashboard-ready summary and alert list
 - [x] hardened error behavior (`400` missing config / `502` upstream query failure)
+- [x] live-source summary label fixed to `opensearch:wazuh-alerts`
+- [x] auditable ingestion run table (`ingestion_runs`)
+- [x] one-click Wazuh sync API (`POST /api/v1/ingestion/wazuh/sync`)
+- [x] ingestion status API (`GET /api/v1/ingestion/status`)
+- [x] sync path fetches, normalizes, persists, triages, and records run stats
+- [x] verified live sync run: fetched 5, stored 5, triaged 5
 
 ### UI for Connectors
 - [x] connector list and save form
 - [x] health check action
 - [x] health history display
 - [x] improved connector status readability (status pills, latency/check detail)
+- [x] dashboard Live Wazuh Ingestion panel
+- [x] connector page ingestion control and run history
+- [x] persistent alert count shown when row fetch is still loading
 
 ## Day 4 (In Progress) - Triage + Incident Depth
 
@@ -85,6 +94,14 @@ It is intentionally detailed and operational (not pitch-level).
 - [x] triage endpoints for single and sample batch
 - [x] verdict/confidence/risk/recommendation structured output
 - [x] duplicate triage cache hook
+- [x] impacted entities field
+- [x] L2 investigation steps field
+- [x] containment steps field
+- [x] resolution criteria field
+- [x] analyst questions field
+- [x] recommended actions shown in UI
+- [x] raw event visibility in triage detail
+- [x] analyst feedback/disposition save flow
 - [ ] confidence threshold routing policy (strict escalation logic)
 - [ ] prompt template versioning + deterministic fallback path
 
@@ -93,12 +110,25 @@ It is intentionally detailed and operational (not pitch-level).
 - [x] create/list/status update APIs
 - [x] timeline retrieval endpoint
 - [x] incident panel in dashboard
+- [x] alert-to-case handoff from triage
+- [x] owner field
+- [x] ticket reference field
+- [x] priority field
+- [x] SLA due field
+- [x] escalation flag
+- [x] close reason field
+- [x] resolution summary field
+- [x] case board phase buckets: New, Triage, Investigation, Response, Closed
 - [ ] richer timeline tagging (analysis/action/system)
-- [ ] incident-owner and SLA fields
+- [ ] case comments with structured evidence attachments
 
 ### UI Improvements (Current Sprint)
 - [x] overview KPI cards
 - [x] clearer connector cards and status
+- [x] Wazuh/Kibana-style responsive UI polish
+- [x] compact mobile/tablet navigation
+- [x] duplicate React key fix for repeated Wazuh alert IDs
+- [x] case cards show priority, owner, SLA, escalation, and resolution
 - [ ] incident table sorting/paging
 - [ ] explicit severity/risk chips in incident rows
 - [ ] timeline panel grouping by event_type
@@ -185,4 +215,6 @@ APP_TOKEN=$(curl -s -X POST 'http://localhost:8000/api/v1/auth/login' \
 curl -s -H "Authorization: Bearer $APP_TOKEN" 'http://localhost:8000/api/v1/connectors/wazuh/health'
 curl -s -H "Authorization: Bearer $APP_TOKEN" 'http://localhost:8000/api/v1/connectors/opensearch/health'
 curl -s -H "Authorization: Bearer $APP_TOKEN" 'http://localhost:8000/alerts/wazuh/recent?limit=3'
+curl -s -X POST -H "Authorization: Bearer $APP_TOKEN" 'http://localhost:8000/api/v1/ingestion/wazuh/sync?limit=5&triage=true'
+curl -s -H "Authorization: Bearer $APP_TOKEN" 'http://localhost:8000/api/v1/ingestion/status'
 ```

@@ -1,1 +1,96 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Day 4</title><link rel="stylesheet" href="style.css"></head><body><div class="layout"><aside class="sidebar"><div class="brand">AI SOC SOAR MVP</div><div class="sub">GitBook-style judge docs</div><nav class="menu"><a href="index.html">Overview</a><a href="day-1.html">Day 1</a><a href="day-2.html">Day 2</a><a href="day-3.html">Day 3</a><a class="active" href="day-4.html">Day 4</a><a href="day-5.html">Day 5</a><a href="day-6.html">Day 6</a><a href="day-7.html">Day 7</a></nav></aside><main class="content"><section class="hero"><p class="kicker">Day 4</p><h1>Triage + Incident Lifecycle Core</h1><span class="status progress">In Progress</span><p>Triage and incident APIs are functional; now deepening grouping quality, timeline UX, and analyst workflow controls.</p></section><section class="panel"><h2>Completed So Far</h2><ul><li>Triage endpoints with cache-aware behavior.</li><li>Incident and incident_events schema added.</li><li>Incident APIs for create/list/status updates.</li><li>Incident dashboard panel with role-aware write actions.</li></ul></section><section class="panel"><h2>In Progress Now</h2><ul><li>Incident timeline and filtering depth in dashboard.</li><li>Stronger operational metrics around incident quality.</li><li>Further alignment of triage-to-incident workflow for analysts.</li></ul></section></main></div></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Day 4 - AI Triage and Case Lifecycle</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">AI SOC SOAR MVP</div>
+      <div class="sub">GitBook-style judge docs</div>
+      <nav class="menu">
+        <a href="index.html">Overview</a>
+        <a href="day-1.html">Day 1</a>
+        <a href="day-2.html">Day 2</a>
+        <a href="day-3.html">Day 3</a>
+        <a class="active" href="day-4.html">Day 4</a>
+        <a href="day-5.html">Day 5</a>
+        <a href="day-6.html">Day 6</a>
+        <a href="day-7.html">Day 7</a>
+      </nav>
+    </aside>
+    <main class="content">
+      <section class="hero">
+        <p class="kicker">Day 4</p>
+        <h1>AI Triage + SOC Case Lifecycle</h1>
+        <span class="status progress">In Progress</span>
+        <p>Day 4 is focused on making triage and case handling useful for L1/L2 analysts: deeper evidence, investigation steps, review feedback, case ownership, SLA fields, escalation, and resolution tracking.</p>
+      </section>
+
+      <section class="panel">
+        <h2>AI Triage Completed</h2>
+        <ul>
+          <li>Structured triage decisions with verdict, confidence, risk score, summary, evidence, MITRE context, and SOAR recommendation.</li>
+          <li>Expanded triage output with impacted entities, L2 investigation steps, containment steps, resolution criteria, analyst questions, and recommended actions.</li>
+          <li>Cache-aware triage flow to avoid repeated low-value model calls for duplicate alert signatures.</li>
+          <li>Force-refresh option preserved for analyst-controlled retriage.</li>
+          <li>Triage history endpoint stores analyst disposition and notes.</li>
+          <li>Frontend AI Triage Workbench shows raw event access, evidence, investigation steps, containment, resolution criteria, analyst questions, and review feedback.</li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>Case Management Completed</h2>
+        <ul>
+          <li>Incident and incident event schemas added for persistent case tracking.</li>
+          <li>Case APIs support create, list, status update, timeline retrieval, and event creation.</li>
+          <li>Case board added with SOC phases: New, Triage, Investigation, Response, Closed.</li>
+          <li>Alert-to-case handoff added from AI Triage through the Raise Ticket action.</li>
+          <li>Case fields expanded with owner, ticket reference, priority, SLA due time, escalation flag, close reason, and resolution summary.</li>
+          <li>Timeline events track creation, status change, notes, investigation, containment, recovery, and ticket events.</li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>UI and Analyst Workflow Completed</h2>
+        <ul>
+          <li>Wazuh-style responsive dashboard polish with compact navigation, clean panels, and mobile/tablet layout rules.</li>
+          <li>Duplicate React key issue fixed for repeated Wazuh alert IDs.</li>
+          <li>Executive dashboard now shows ingestion state and avoids misleading zero-alert messaging while persisted counts are available.</li>
+          <li>Case board cards show priority, severity, risk, ticket, owner, SLA, escalation, summary, and resolution notes.</li>
+          <li>Role-aware actions continue to restrict write operations to admin/analyst users.</li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>Still In Progress</h2>
+        <ul>
+          <li>Strict confidence threshold routing and analyst escalation policy.</li>
+          <li>Prompt/template versioning for future cloud LLM integration.</li>
+          <li>Incident grouping and deduplication by asset, rule, source, and time window.</li>
+          <li>Evidence attachments and richer investigation notebook.</li>
+          <li>SOAR playbook dispatch to n8n/Shuffle with human approval gates.</li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>Evidence Endpoints</h2>
+        <ul>
+          <li><code>GET /triage/alerts/recent?limit=25</code></li>
+          <li><code>POST /triage/alert</code></li>
+          <li><code>GET /triage/history</code></li>
+          <li><code>POST /triage/feedback</code></li>
+          <li><code>GET /api/v1/incidents</code></li>
+          <li><code>POST /api/v1/incidents</code></li>
+          <li><code>PATCH /api/v1/incidents/{id}/status</code></li>
+          <li><code>GET /api/v1/incidents/{id}/events</code></li>
+          <li><code>POST /api/v1/incidents/{id}/events</code></li>
+        </ul>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
