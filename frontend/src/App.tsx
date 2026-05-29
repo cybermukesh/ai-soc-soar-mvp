@@ -433,8 +433,8 @@ function App() {
               <article className="panel wide-panel">
                 <h2>Latest Live Alerts</h2>
                 <div className="compact-feed">
-                  {alerts.slice(0, 6).map((alert) => (
-                    <button key={alert.alert_id} onClick={() => { setSelectedAlertId(alert.alert_id); setTab("triage"); }}>
+                  {alerts.slice(0, 6).map((alert, index) => (
+                    <button key={`${alert.alert_id}-${index}`} onClick={() => { setSelectedAlertId(alert.alert_id); setTab("triage"); }}>
                       <span>{alert.severity}</span>
                       <strong>{alert.rule.name}</strong>
                       <em>{alert.asset.hostname || "unknown"} | {alert.network.src_ip || "no source ip"}</em>
@@ -501,8 +501,8 @@ function App() {
             </div>
             <div className="alert-table">
               <div className="table-head"><span>Alert</span><span>Verdict</span><span>Confidence</span><span>Risk</span><span>SOAR</span></div>
-              {decisions.map((d) => (
-                <article className="alert-row" key={d.alert_id} onClick={() => setSelectedAlertId(d.alert_id)}>
+              {decisions.map((d, index) => (
+                <article className="alert-row" key={`${d.alert_id}-${index}`} onClick={() => setSelectedAlertId(d.alert_id)}>
                   <span><strong>{d.alert_id}</strong>{d.attack_summary}</span>
                   <span className={`severity ${verdictClass[d.verdict]}`}>{d.verdict}</span>
                   <span>{d.confidence}</span>
@@ -530,25 +530,25 @@ function App() {
                       </article>
                       <article>
                         <strong>Evidence</strong>
-                        <ul className="check-list">{decision.evidence.map((item) => <li key={item}>{item}</li>)}</ul>
+                        <ul className="check-list">{decision.evidence.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul>
                         <strong>Impacted Entities</strong>
-                        <ul className="check-list">{decision.impacted_entities.map((item) => <li key={item}>{item}</li>)}</ul>
+                        <ul className="check-list">{decision.impacted_entities.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul>
                       </article>
                       <article>
                         <strong>L2 Investigation Steps</strong>
-                        <ol className="check-list">{decision.investigation_steps.map((item) => <li key={item}>{item}</li>)}</ol>
+                        <ol className="check-list">{decision.investigation_steps.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ol>
                         <strong>Recommended Actions</strong>
-                        <ul className="check-list">{decision.recommended_actions.map((item) => <li key={item}>{item}</li>)}</ul>
+                        <ul className="check-list">{decision.recommended_actions.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul>
                       </article>
                       <article>
                         <strong>Containment Steps</strong>
-                        <ul className="check-list">{decision.containment_steps.map((item) => <li key={item}>{item}</li>)}</ul>
+                        <ul className="check-list">{decision.containment_steps.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul>
                         <strong>Resolution Criteria</strong>
-                        <ul className="check-list">{decision.resolution_criteria.map((item) => <li key={item}>{item}</li>)}</ul>
+                        <ul className="check-list">{decision.resolution_criteria.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul>
                       </article>
                       <article>
                         <strong>Analyst Questions</strong>
-                        <ul className="check-list">{decision.analyst_questions.map((item) => <li key={item}>{item}</li>)}</ul>
+                        <ul className="check-list">{decision.analyst_questions.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul>
                         <div className="triage-feedback">
                           <select value={triageFeedback.disposition} onChange={(e) => setTriageFeedback({ ...triageFeedback, disposition: e.target.value })}>
                             <option value="needs_investigation">needs investigation</option>
@@ -577,8 +577,8 @@ function App() {
             <section className="panel detail-panel">
               <h3>Triage Review History</h3>
               <div className="admin-list">
-                {triageHistory.slice(0, 12).map((item) => (
-                  <article className="admin-item" key={`${item.alert_id}-${item.updated_at}`}>
+                {triageHistory.slice(0, 12).map((item, index) => (
+                  <article className="admin-item" key={`${item.alert_id}-${item.updated_at}-${index}`}>
                     <span>{item.updated_at || "-"} | {item.alert_id} | {item.disposition || "pending"} | {item.note || "no note"}</span>
                   </article>
                 ))}
