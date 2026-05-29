@@ -54,6 +54,8 @@ function App() {
   const [incidentFilter, setIncidentFilter] = React.useState({ q: "", status: "", severity: "" });
   const [incidentForm, setIncidentForm] = React.useState({ title: "", severity: "medium", risk_score: 50, source_tool: "wazuh" });
   const [incidentMsg, setIncidentMsg] = React.useState("");
+  const healthyConnectors = connectors.filter((c) => c.last_status === "ok").length;
+  const openIncidents = incidents.filter((i) => i.status !== "resolved").length;
 
   React.useEffect(() => {
     if (!token) return;
@@ -252,7 +254,17 @@ function App() {
           <span className="status-pill">{user.full_name} - {user.role}</span>
         </header>
 
-        {tab === "overview" ? <section className="panel"><h2>Platform Status</h2><p>Backend API, JWT auth, RBAC roles, and triage endpoints are active.</p></section> : null}
+        {tab === "overview" ? (
+          <>
+            <section className="metric-grid">
+              <article className="metric"><span>Connectors</span><strong>{connectors.length}</strong></article>
+              <article className="metric"><span>Healthy Connectors</span><strong>{healthyConnectors}</strong></article>
+              <article className="metric"><span>Open Incidents</span><strong>{openIncidents}</strong></article>
+              <article className="metric"><span>Triage Decisions</span><strong>{decisions.length}</strong></article>
+            </section>
+            <section className="panel"><h2>Platform Status</h2><p>Backend API, JWT auth, RBAC, connector probes, triage endpoints, and incident lifecycle are active.</p></section>
+          </>
+        ) : null}
         {tab === "connectors" ? (
           <section className="panel">
             <h2>Connector Health</h2>
@@ -267,8 +279,14 @@ function App() {
             {connectorMsg ? <p>{connectorMsg}</p> : null}
             <div className="admin-list">
               {connectors.map((c) => (
-                <article key={c.id} className="admin-item">
-                  <span><strong>{c.name}</strong> {c.base_url || "not set"} | {c.last_status}{c.last_error ? ` (${c.last_error})` : ""} | latency: {c.last_latency_ms}ms | checked: {c.last_checked_at || "-"}</span>
+                <article key={c.id} className="admin-item connector-item">
+                  <span>
+                    <strong>{c.name}</strong>
+                    <span className={`state-pill state-${c.last_status || "unknown"}`}>{c.last_status || "unknown"}</span>
+                    <span className="muted-line">{c.base_url || "base url not set"}</span>
+                    <span className="muted-line">latency: {c.last_latency_ms}ms | checked: {c.last_checked_at || "-"}</span>
+                    {c.last_error ? <span className="error-line">{c.last_error}</span> : null}
+                  </span>
               <button onClick={() => checkConnectorHealth(c.name)} disabled={user.role === "viewer"}>Check health</button>
                 </article>
               ))}
