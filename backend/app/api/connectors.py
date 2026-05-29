@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.auth import require_role
+from app.connectors.opensearch import check_opensearch_health
+from app.connectors.wazuh_api import check_wazuh_health
 from app.db.models import AuditLog, Connector, ConnectorHealthCheck, User
 from app.db.session import get_db
 from app.models.connectors import (
@@ -111,7 +113,7 @@ def upsert_connector(
 
 
 @router.get("/{name}/health", response_model=ConnectorHealthResponse)
-def connector_health(
+async def connector_health(
     name: str,
     db: Session = Depends(get_db),
     user: User = Depends(require_role("admin", "analyst", "viewer")),
@@ -139,8 +141,16 @@ def connector_health(
         return ConnectorHealthResponse(name=name, ok=False, detail="disabled")
 
     has_secret = bool(decrypt_secret(row.password_encrypted))
-    ok = bool(row.base_url and row.username and has_secret)
-    detail = "configured" if ok else "missing base_url/username/password"
+    if not (row.base_url and row.username and has_secret):
+        ok = False
+        detail = "missing base_url/username/password"
+    elif name == "wazuh":
+        ok, detail = await check_wazuh_health()
+    elif name == "opensearch":
+        ok, detail = await check_opensearch_health()
+    else:
+        ok = True
+        detail = "configured"
     row.last_status = "ok" if ok else "error"
     row.last_error = "" if ok else detail
     row.last_checked_at = datetime.now(timezone.utc)

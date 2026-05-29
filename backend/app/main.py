@@ -1,4 +1,4 @@
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -219,7 +219,12 @@ def normalize_alert(
 async def recent_wazuh_alerts(
     limit: int = 25, _: Session = Depends(require_role("admin", "analyst", "viewer"))
 ) -> dict:
-    response = await fetch_recent_wazuh_alerts(limit=limit)
+    try:
+        response = await fetch_recent_wazuh_alerts(limit=limit)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"OpenSearch query failed: {exc}") from exc
     alerts = normalize_wazuh_hits(response)
     for alert in alerts:
         upsert_alert(alert)

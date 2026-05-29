@@ -10,9 +10,9 @@ Convert noisy SIEM alerts into prioritized, explainable incidents and trigger an
 
 - Day 1: Complete - market strategy, pain-point research, competitor scan, and MVP narrowing.
 - Day 2: Complete - product plan plus backend foundation (DB/session, auth, JWT, RBAC, admin APIs, audit logs).
-- Day 3: Complete - connector layer (persisted connector configs, health checks, encrypted secret path, connector history, connector UI).
-- Day 4: Complete - triage + incident core (triage endpoints, incident schema, incident APIs, incident dashboard actions, RBAC on operations).
-- Day 5: In progress - incident grouping logic, timeline UX depth, and reduction metrics.
+- Day 3: Complete - connector layer with persisted configs, health checks, encrypted secret path, connector history/audit, and live Wazuh/OpenSearch probe validation.
+- Day 4: In progress - triage + incident core depth (workflow quality, timeline depth, grouping quality).
+- Day 5: Planned - incident grouping logic, timeline UX depth, and reduction metrics.
 
 ## Core Flow
 
