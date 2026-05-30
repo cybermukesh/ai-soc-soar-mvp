@@ -13,8 +13,8 @@ Convert noisy SIEM alerts into prioritized, explainable incidents and trigger an
 - Day 3: Complete - connector layer with persisted configs, health checks, encrypted secret path, connector history/audit, and live Wazuh/OpenSearch probe validation.
 - Day 4: In progress - AI triage depth, analyst feedback, incident lifecycle, AI model settings, and threat-intel provider control plane.
 - Day 5: In progress - alert queue filters, persisted correlation groups, local IOC enrichment, case lifecycle sections, executive metrics, and measurable noise-reduction evidence.
-- Day 6: In progress - n8n SOAR connector state, workflow template API, trigger API, persisted workflow run logs, frontend request console, and first high-impact approval hold.
-- Day 7: Planned - demo hardening, security review, CI/CD polish, and judge-ready evidence.
+- Day 6: Demo-ready - n8n SOAR connector state, workflow template API, trigger API, persisted workflow run logs, frontend request console, and first high-impact approval hold.
+- Day 7: Demo pack added - demo runbook, screenshot capture script, browser walkthrough, RBAC role editing, and judge-ready evidence checklist.
 
 ## Core Flow
 
@@ -127,6 +127,18 @@ soar/             n8n and Shuffle workflow templates
 - `POST /api/v1/threat-intel/local-iocs`: creates or updates a local IOC.
 - `GET /api/v1/threat-intel/enrich-alert/{alert_id}`: matches a stored alert against local IOCs without external API calls.
 
+## Day 6-7 SOAR, Demo, and Admin Controls
+
+- `GET /api/v1/automation/connectors`: returns n8n connector status and masked webhook state.
+- `GET /api/v1/automation/workflow-templates`: lists available workflow templates.
+- `POST /api/v1/automation/workflow-templates/{template_id}/trigger`: requests a workflow run with case and alert context.
+- `GET /api/v1/automation/workflow-runs`: shows persisted workflow history, including pending approvals.
+- `POST /api/v1/automation/workflow-runs/{run_id}/approve`: admin approval/reject path for high-impact workflow requests.
+- `PATCH /api/v1/auth/users/{user_id}/role`: admin-only role assignment for `admin`, `analyst`, or `viewer`, with self-demotion blocked.
+- Demo runbook: `docs/DAY7_DEMO_RUNBOOK.md`.
+- Browser walkthrough: `demo/video/demo-flow.html`.
+- Screenshot capture script: `scripts/capture_demo_screenshots.mjs`.
+
 ## 7-Day Build Plan
 
 - Day 1: Market strategy, competitor/product scan, industry pain-point research, startup positioning, and focused MVP idea selection.
@@ -135,7 +147,7 @@ soar/             n8n and Shuffle workflow templates
 - Day 4: AI triage endpoints with signal/noise scoring, correlation, queue routing, suppression reason, confidence, evidence, MITRE context, risk scoring, cache replay, and BYO model settings.
 - Day 5: Incident grouping, threat-intel enrichment, risk scoring aggregation, duplicate/noise feedback, and measurable alert-reduction metrics.
 - Day 6: n8n/Shuffle SOAR workflow triggers, Slack notifications, approval controls, and analyst UI.
-- Day 7: Demo polish, security review, before/after pitch metrics, dashboard screenshots, and judge-ready story.
+- Day 7: Demo polish, security review, before/after pitch metrics, dashboard screenshots, RBAC role editing, walkthrough flow, and judge-ready story.
 
 ## Low-Cost AI Strategy
 

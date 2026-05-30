@@ -1,1 +1,93 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Day 7</title><link rel="stylesheet" href="style.css"></head><body><div class="layout"><aside class="sidebar"><div class="brand">AI SOC SOAR MVP</div><div class="sub">GitBook-style judge docs</div><nav class="menu"><a href="index.html">Overview</a><a href="day-1.html">Day 1</a><a href="day-2.html">Day 2</a><a href="day-3.html">Day 3</a><a href="day-4.html">Day 4</a><a href="day-5.html">Day 5</a><a href="day-6.html">Day 6</a><a class="active" href="day-7.html">Day 7</a></nav></aside><main class="content"><section class="hero"><p class="kicker">Day 7</p><h1>Demo Readiness and Launch Narrative</h1><span class="status progress">Planned</span><p>Final sprint for quality checks, security review, screenshots, and judge-ready measurable outcomes.</p></section><section class="panel"><h2>Planned Work</h2><ul><li>Final end-to-end walkthrough and screenshot pack.</li><li>Security and data-handling checklist completion.</li><li>MVP performance summary and token-cost report.</li><li>Pitch metrics: alert reduction and analyst efficiency gain.</li></ul></section></main></div></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Day 7 - Demo Evidence</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">AI SOC SOAR MVP</div>
+      <div class="sub">GitBook-style judge docs</div>
+      <nav class="menu">
+        <a href="index.html">Overview</a>
+        <a href="day-1.html">Day 1</a>
+        <a href="day-2.html">Day 2</a>
+        <a href="day-3.html">Day 3</a>
+        <a href="day-4.html">Day 4</a>
+        <a href="day-5.html">Day 5</a>
+        <a href="day-6.html">Day 6</a>
+        <a class="active" href="day-7.html">Day 7</a>
+      </nav>
+    </aside>
+    <main class="content">
+      <section class="hero">
+        <p class="kicker">Day 7</p>
+        <h1>Demo Readiness, Evidence, and Launch Narrative</h1>
+        <span class="status done">Demo Pack Added</span>
+        <p>Day 7 packages the MVP into a judge-ready story: measurable noise reduction, screenshots, walkthrough flow, RBAC controls, SOAR approval guardrails, and setup steps for live n8n dispatch.</p>
+      </section>
+
+      <section class="grid">
+        <article class="metric"><h3>Noise Reduction</h3><p>Current lab benchmark shows 100 raw Wazuh alerts reduced to 38 analyst work items, an estimated 62 percent workload reduction.</p></article>
+        <article class="metric"><h3>Evidence Pack</h3><p>Screenshot capture script, browser demo flow, and runbook added under <code>demo/</code> and <code>docs/</code>.</p></article>
+        <article class="metric"><h3>Governance</h3><p>Admin can activate, deactivate, and reassign user roles while self-demotion is blocked.</p></article>
+        <article class="metric"><h3>SOAR Safety</h3><p>Containment workflows remain pending approval until an admin approves or rejects the action.</p></article>
+      </section>
+
+      <section class="panel">
+        <h2>Completed for Demo</h2>
+        <ul>
+          <li>Day 7 demo runbook added at <code>docs/DAY7_DEMO_RUNBOOK.md</code>.</li>
+          <li>Small browser-based walkthrough added at <code>demo/video/demo-flow.html</code>.</li>
+          <li>Screenshot capture script added at <code>scripts/capture_demo_screenshots.mjs</code>.</li>
+          <li>Admin role reassignment endpoint added: <code>PATCH /api/v1/auth/users/{id}/role</code>.</li>
+          <li>Admin UI now includes per-user role dropdowns plus active/inactive controls.</li>
+          <li>Demo flow covers Overview, AI Triage, Correlation Groups, Settings/Local IOC, Case Management, SOAR Approval, and Admin RBAC.</li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>Demo Flow</h2>
+        <ol>
+          <li>Login with the seeded admin user.</li>
+          <li>Show executive metrics: raw alerts, analyst items, grouped duplicates, solved/unsolved cases.</li>
+          <li>Open AI Triage and show alert evidence, raw event, L2 steps, containment, and resolution criteria.</li>
+          <li>Open Correlation Groups and explain how duplicate/noisy alerts are compressed.</li>
+          <li>Add a local IOC and enrich an alert without sending lab data to external providers.</li>
+          <li>Create or update a case, add investigation history, then show the lifecycle board.</li>
+          <li>Request a SOAR action and show pending approval before admin approval/rejection.</li>
+          <li>Open Admin and demonstrate role assignment, revocation, approval, and audit records.</li>
+        </ol>
+      </section>
+
+      <section class="panel">
+        <h2>n8n Setup Needed</h2>
+        <p>Install n8n on the lab host when live SOAR dispatch is required. The MVP already stores connector state and run history; it only needs the webhook URL.</p>
+        <pre><code>docker volume create n8n_data
+docker run -d --name n8n --restart unless-stopped \
+  -p 5678:5678 \
+  -e N8N_HOST=0.0.0.0 \
+  -e N8N_PORT=5678 \
+  -e N8N_PROTOCOL=http \
+  -v n8n_data:/home/node/.n8n \
+  n8nio/n8n:latest</code></pre>
+        <p>Then set <code>N8N_WEBHOOK_URL=http://&lt;n8n-host&gt;:5678/webhook/&lt;workflow-path&gt;</code> in the backend environment and restart the backend.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Known Next Hardening</h2>
+        <ul>
+          <li>External threat-intel adapters for VirusTotal, AbuseIPDB, OTX, and MISP.</li>
+          <li>Long-range metric snapshots for 7, 15, 30, and 365 days.</li>
+          <li>Evidence attachments in case timelines.</li>
+          <li>Docker Compose packaging for backend, frontend, and persistent database volume.</li>
+          <li>Shuffle adapter templates after n8n workflow validation.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

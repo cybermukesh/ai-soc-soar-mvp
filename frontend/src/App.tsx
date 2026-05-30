@@ -6,6 +6,7 @@ import "./styles/app.css";
 const API = "http://localhost:8000";
 
 type User = { id: number; email: string; full_name: string; role: "admin" | "analyst" | "viewer"; is_active: boolean };
+type RoleName = User["role"];
 type AuditLog = { id: number; actor_user_id: number; action: string; target_type: string; target_id: string; detail: string; created_at: string };
 type Connector = { id: number; name: string; connector_type: string; base_url: string; username: string; password_masked: string; enabled: boolean; last_status: string; last_error: string; last_latency_ms: number; last_checked_at: string };
 type ConnectorHistory = { id: number; connector_id: number; ok: boolean; detail: string; latency_ms: number; checked_by_user_id: number; created_at: string };
@@ -614,6 +615,16 @@ function App() {
       body: JSON.stringify({ is_active: !isActive }),
     });
     if (res.ok) setAdminMsg(`Updated user ${userId}`);
+  }
+
+  async function updateUserRole(userId: number, role: RoleName) {
+    const res = await fetch(`${API}/api/v1/auth/users/${userId}/role`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ role }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setAdminMsg(res.ok ? `Updated ${data.email} to ${data.role}` : `Role update failed: ${data.detail || "error"}`);
   }
 
   if (!token || !user) {
@@ -1412,7 +1423,12 @@ docker run -d --name n8n --restart unless-stopped \\
             <div className="admin-list">
               {users.map((u) => (
                 <article key={u.id} className="admin-item">
-                  <span>{u.email} ({u.role})</span>
+                  <span>{u.email} ({u.role}) {u.is_active ? "active" : "inactive"}</span>
+                  <select value={u.role} onChange={(e) => updateUserRole(u.id, e.target.value as RoleName)} disabled={u.id === user.id}>
+                    <option value="admin">admin</option>
+                    <option value="analyst">analyst</option>
+                    <option value="viewer">viewer</option>
+                  </select>
                   <button onClick={() => toggleActive(u.id, u.is_active)}>{u.is_active ? "Deactivate" : "Activate"}</button>
                 </article>
               ))}

@@ -12,6 +12,7 @@ from app.models.auth import (
     RegisterUserRequest,
     ToggleUserActiveRequest,
     TokenResponse,
+    UpdateUserRoleRequest,
     UserOut,
 )
 from app.services.auth import create_access_token, decode_token, hash_password, verify_password
@@ -169,6 +170,36 @@ def toggle_user_active(
         target_type="user",
         target_id=str(user.id),
         detail=f"is_active={user.is_active}",
+    )
+    return _user_out(user)
+
+
+@router.patch("/users/{user_id}/role", response_model=UserOut)
+def update_user_role(
+    user_id: int,
+    payload: UpdateUserRoleRequest,
+    db: Session = Depends(get_db),
+    admin: User = Depends(require_role("admin")),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    role = db.query(Role).filter(Role.name == payload.role).first()
+    if not role:
+        raise HTTPException(status_code=400, detail="Unknown role")
+    if user.id == admin.id and payload.role != "admin":
+        raise HTTPException(status_code=400, detail="Admin cannot revoke their own admin role")
+    previous_role = user.role.name
+    user.role_id = role.id
+    db.commit()
+    db.refresh(user)
+    _write_audit(
+        db,
+        actor_user_id=admin.id,
+        action="update_user_role",
+        target_type="user",
+        target_id=str(user.id),
+        detail=f"{previous_role}->{payload.role}",
     )
     return _user_out(user)
 

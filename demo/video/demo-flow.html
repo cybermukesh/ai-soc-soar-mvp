@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AI SOC SOAR MVP Demo Flow</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, Arial, sans-serif; background: #eef4f8; color: #172033; }
+    body { margin: 0; }
+    .frame { min-height: 100vh; display: grid; place-items: center; padding: 28px; }
+    .slide { width: min(1040px, 100%); min-height: 560px; background: #fff; border: 1px solid #d8e1ea; border-radius: 10px; box-shadow: 0 16px 40px rgba(16,24,40,.12); padding: 34px; display: none; }
+    .slide.active { display: block; }
+    h1 { margin: 0 0 8px; font-size: 34px; color: #101828; }
+    h2 { margin: 0 0 18px; font-size: 24px; color: #1d2939; }
+    p, li { font-size: 18px; line-height: 1.55; color: #475467; }
+    .kicker { color: #047481; text-transform: uppercase; font-weight: 800; letter-spacing: .08em; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 22px; }
+    .card { border: 1px solid #d8e1ea; border-radius: 8px; padding: 18px; background: #f8fafc; }
+    .card strong { display: block; font-size: 30px; color: #101828; }
+    .controls { position: fixed; left: 24px; right: 24px; bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+    button { min-height: 40px; border: 1px solid #cbd5e1; border-radius: 8px; background: #101828; color: #fff; padding: 0 16px; font-weight: 700; }
+    .bar { height: 8px; width: 220px; background: #d8e1ea; border-radius: 999px; overflow: hidden; }
+    .bar span { display: block; height: 100%; background: #0e7490; width: var(--w); }
+  </style>
+</head>
+<body>
+  <main class="frame">
+    <section class="slide active">
+      <p class="kicker">Day 7 Demo</p>
+      <h1>AI SOC SOAR MVP</h1>
+      <p>Wazuh-first SIEM optimization tool that reduces alert noise, groups related alerts, enriches with local IOCs, and protects response actions with approval controls.</p>
+      <div class="grid">
+        <div class="card"><strong>62%</strong><span>estimated workload reduction in current lab dataset</span></div>
+        <div class="card"><strong>100</strong><span>raw Wazuh alerts analyzed in demo batch</span></div>
+        <div class="card"><strong>38</strong><span>analyst work items after grouping and suppression</span></div>
+      </div>
+    </section>
+    <section class="slide">
+      <p class="kicker">Noise Reduction</p>
+      <h2>Batch-aware triage</h2>
+      <ul>
+        <li>Calculates signal score, noise score, queue, suppression decision, and analyst priority.</li>
+        <li>Persists correlation groups with representative alert, alert IDs, first/last seen, and suppression reason.</li>
+        <li>Shows L1/L2 investigation steps and raw event evidence in the UI.</li>
+      </ul>
+    </section>
+    <section class="slide">
+      <p class="kicker">Local Enrichment</p>
+      <h2>Lab-safe IOC matching</h2>
+      <ul>
+        <li>Local IOC watchlist avoids sending lab/client indicators to external providers.</li>
+        <li>Alert detail can enrich source IP, destination IP, host, user, and raw event indicators.</li>
+        <li>External providers remain configurable but are not required for the MVP demo.</li>
+      </ul>
+    </section>
+    <section class="slide">
+      <p class="kicker">Case + SOAR</p>
+      <h2>Analyst lifecycle</h2>
+      <ul>
+        <li>Cases track owner, priority, SLA, escalation, timeline notes, close reason, and resolution summary.</li>
+        <li>n8n webhook dispatch is available for lab workflows.</li>
+        <li>Containment actions are held as pending approval and require admin approve/reject.</li>
+      </ul>
+    </section>
+    <section class="slide">
+      <p class="kicker">Admin</p>
+      <h2>RBAC and governance</h2>
+      <ul>
+        <li>Admin can create users, activate/deactivate accounts, and assign roles.</li>
+        <li>Viewer remains read-only; analyst can operate cases and triage; admin controls users and approvals.</li>
+        <li>Audit logs capture login, user changes, settings changes, and automation decisions.</li>
+      </ul>
+    </section>
+  </main>
+  <div class="controls">
+    <button id="prev">Back</button>
+    <div class="bar"><span id="bar" style="--w:20%"></span></div>
+    <button id="next">Next</button>
+  </div>
+  <script>
+    const slides = Array.from(document.querySelectorAll(".slide"));
+    let index = 0;
+    function render() {
+      slides.forEach((slide, i) => slide.classList.toggle("active", i === index));
+      document.getElementById("bar").style.setProperty("--w", `${((index + 1) / slides.length) * 100}%`);
+    }
+    document.getElementById("prev").onclick = () => { index = Math.max(0, index - 1); render(); };
+    document.getElementById("next").onclick = () => { index = Math.min(slides.length - 1, index + 1); render(); };
+    setInterval(() => { index = (index + 1) % slides.length; render(); }, 5500);
+  </script>
+</body>
+</html>

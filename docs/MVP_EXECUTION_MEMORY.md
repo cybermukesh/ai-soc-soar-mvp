@@ -181,7 +181,7 @@ It is intentionally detailed and operational (not pitch-level).
 - [ ] feedback to triage cache override
 - [ ] explainability log for why grouped/suppressed
 
-## Day 6 (In Progress) - SOAR Execution Controls
+## Day 6 (Demo-Ready) - SOAR Execution Controls
 
 ### SOAR Integration
 - [x] workflow dispatch service foundation for n8n webhook template
@@ -209,18 +209,30 @@ It is intentionally detailed and operational (not pitch-level).
 - [x] approval queue controls inside workflow run history
 - [ ] execution status timeline (queued/running/success/fail)
 
-## Day 7 (Planned) - Demo Readiness + Security Hardening
+## Day 7 (Demo Pack Added) - Demo Readiness + Security Hardening
 
 ### Demo Packaging
-- [ ] scripted demo flow with fixed data checkpoints
-- [ ] screenshots and short walkthrough notes
-- [ ] judge-facing result board (alert reduction, MTTR proxy, automation counts)
+- [x] scripted demo flow with fixed data checkpoints
+- [x] screenshots capture script and short walkthrough notes
+- [x] browser-based walkthrough artifact at `demo/video/demo-flow.html`
+- [x] judge-facing result board narrative for alert reduction, analyst items, and approval-gated SOAR
+- [x] n8n setup command and webhook configuration documented
+- [ ] final live screenshot capture from the local browser after the latest frontend restart
 
 ### Security + Reliability
 - [ ] dependency check + lock cleanup
 - [ ] API input validation review
-- [ ] auth policy sanity checks and least-privilege pass
-- [ ] final RBAC walkthrough tests
+- [x] auth policy sanity checks and least-privilege pass for admin role reassignment
+- [x] final RBAC walkthrough API added for assign/revoke roles
+- [ ] full SOAR execution path tested with real n8n webhook target
+
+### Admin Permission Editing
+- [x] admin-only role update API
+- [x] valid roles restricted to admin, analyst, and viewer
+- [x] self-demotion protection for current admin
+- [x] audit entry for role changes
+- [x] frontend per-user role selector
+- [x] frontend active/inactive approval controls retained
 
 ## 3) MVP Validation Checklist (Operational)
 

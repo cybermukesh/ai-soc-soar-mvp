@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr
 
 
@@ -38,6 +40,10 @@ class RegisterUserRequest(BaseModel):
 
 class ToggleUserActiveRequest(BaseModel):
     is_active: bool
+
+
+class UpdateUserRoleRequest(BaseModel):
+    role: Literal["admin", "analyst", "viewer"]
 
 
 class AuditLogOut(BaseModel):
