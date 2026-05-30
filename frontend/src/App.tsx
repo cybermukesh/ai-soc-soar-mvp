@@ -525,17 +525,6 @@ function App() {
 
         {tab === "overview" ? (
           <>
-            <section className="exec-hero">
-              <div>
-                <p className="eyebrow">Executive Summary</p>
-                <h2>SOC posture from live Wazuh telemetry</h2>
-	                <p>{visibleAlertCount} alerts are available for triage. {analystItems} analyst work items are currently estimated after grouping and suppression. {openIncidents} cases remain active.</p>
-              </div>
-              <div className="exec-score">
-                <span>Noise Reduced</span>
-                <strong>{noiseSummary?.estimated_noise_reduction_percent ?? 0}%</strong>
-              </div>
-            </section>
 	            <section className="metric-grid">
 	              <article className="metric"><span>Critical Alerts</span><strong>{severityCounts.find((s) => s.severity === "critical")?.count || 0}</strong></article>
 	              <article className="metric"><span>High Alerts</span><strong>{severityCounts.find((s) => s.severity === "high")?.count || 0}</strong></article>
@@ -547,6 +536,65 @@ function App() {
 	              <article className="metric"><span>Grouped Duplicates</span><strong>{groupedDuplicates}</strong></article>
 	            </section>
             <section className="dashboard-grid">
+              <article className="panel">
+                <div className="section-title">
+                  <div>
+                    <h2>Alert Severity Split</h2>
+                    <p>Executive-safe distribution by severity, without panic scoring.</p>
+                  </div>
+                </div>
+                <div className="chart-row">
+                  <div
+                    className="donut-chart severity-donut"
+                    style={{
+                      "--critical": `${((severityCounts.find((s) => s.severity === "critical")?.count || 0) / Math.max(alerts.length, 1)) * 100}%`,
+                      "--high": `${(((severityCounts.find((s) => s.severity === "critical")?.count || 0) + (severityCounts.find((s) => s.severity === "high")?.count || 0)) / Math.max(alerts.length, 1)) * 100}%`,
+                      "--medium": `${(((severityCounts.find((s) => s.severity === "critical")?.count || 0) + (severityCounts.find((s) => s.severity === "high")?.count || 0) + (severityCounts.find((s) => s.severity === "medium")?.count || 0)) / Math.max(alerts.length, 1)) * 100}%`,
+                    } as React.CSSProperties}
+                  >
+                    <span>{visibleAlertCount}<em>alerts</em></span>
+                  </div>
+                  <div className="chart-legend">
+                    {severityCounts.map((item) => <span key={item.severity} className={`legend-${item.severity}`}><i />{item.severity}: {item.count}</span>)}
+                  </div>
+                </div>
+              </article>
+              <article className="panel">
+                <div className="section-title">
+                  <div>
+                    <h2>Case Outcome</h2>
+                    <p>Solved versus unsolved work in the SOC queue.</p>
+                  </div>
+                </div>
+                <div className="chart-row">
+                  <div
+                    className="donut-chart case-donut"
+                    style={{ "--solved": `${(resolvedIncidents / Math.max(incidents.length, 1)) * 100}%` } as React.CSSProperties}
+                  >
+                    <span>{resolvedIncidents}<em>solved</em></span>
+                  </div>
+                  <div className="chart-legend">
+                    <span className="legend-solved"><i />Solved: {resolvedIncidents}</span>
+                    <span className="legend-unsolved"><i />Unsolved: {unsolvedIncidents}</span>
+                    <span className="legend-review"><i />Open cases: {openIncidents}</span>
+                  </div>
+                </div>
+              </article>
+              <article className="panel wide-panel">
+                <div className="section-title">
+                  <div>
+                    <h2>Noise Reduction Flow</h2>
+                    <p>How raw Wazuh alerts become analyst work items after grouping and suppression.</p>
+                  </div>
+                  <span className="status-pill">{noiseSummary?.estimated_noise_reduction_percent ?? 0}% reduced</span>
+                </div>
+                <div className="flow-chart">
+                  <span><b>{noiseSummary?.total_alerts || visibleAlertCount}</b><em>Raw alerts</em></span>
+                  <span><b>{groupedDuplicates}</b><em>Grouped duplicates</em></span>
+                  <span><b>{noiseSummary?.suppressed_noise || 0}</b><em>Suppressed noise</em></span>
+                  <span><b>{analystItems}</b><em>Analyst items</em></span>
+                </div>
+              </article>
               <article className="panel wide-panel">
                 <div className="section-title">
                   <div>
