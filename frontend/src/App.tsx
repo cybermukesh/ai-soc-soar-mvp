@@ -106,13 +106,21 @@ function App() {
   const [aiProviders, setAiProviders] = React.useState<AiProvider[]>([]);
   const [intelProviders, setIntelProviders] = React.useState<ThreatIntelProvider[]>([]);
   const [settingsMsg, setSettingsMsg] = React.useState("");
+  const [settingsSection, setSettingsSection] = React.useState<"ai" | "intel" | "status">("ai");
+  const [adminSection, setAdminSection] = React.useState<"users" | "approvals" | "audit" | "health">("users");
+  const [triageSection, setTriageSection] = React.useState<"queue" | "detail" | "history">("queue");
   const [aiForm, setAiForm] = React.useState({ provider: "openai", model: "gpt-4o-mini", api_key: "", base_url: "", enabled: true, cache_enabled: true, max_input_chars: 6000, max_output_tokens: 700, min_severity: "medium", fallback_model: "" });
   const [intelForm, setIntelForm] = React.useState({ provider: "virustotal", api_key: "", base_url: "", enabled: false, daily_limit: 500, cache_ttl_minutes: 1440 });
   const healthyConnectors = connectors.filter((c) => c.last_status === "ok").length;
   const openIncidents = incidents.filter((i) => i.status !== "resolved").length;
+  const resolvedIncidents = incidents.filter((i) => i.status === "resolved" || i.phase === "closed").length;
+  const unsolvedIncidents = incidents.length - resolvedIncidents;
+  const activeAnalysts = users.filter((u) => u.is_active && (u.role === "admin" || u.role === "analyst")).length;
+  const pendingUsers = users.filter((u) => !u.is_active).length;
   const highRiskAlerts = alerts.filter((a) => a.severity === "high" || a.severity === "critical").length;
   const visibleAlertCount = alerts.length || ingestionStatus?.stored_alerts || 0;
-  const avgRisk = Math.round((decisions.reduce((sum, d) => sum + d.risk_score, 0) / Math.max(decisions.length, 1)) || 0);
+  const analystItems = noiseSummary?.estimated_analyst_items ?? decisions.length;
+  const groupedDuplicates = noiseSummary?.grouped_duplicates ?? 0;
   const severityCounts = ["critical", "high", "medium", "low"].map((severity) => ({
     severity,
     count: alerts.filter((alert) => alert.severity === severity).length,
@@ -468,6 +476,16 @@ function App() {
   if (!token || !user) {
     return (
       <main className="login-shell">
+        <section className="login-visual">
+          <div className="login-brandmark">AI SOC</div>
+          <h1>Noise-aware SOC command center</h1>
+          <p>Wazuh-first triage, case workflow, model controls, and SOAR handoff for lean security teams.</p>
+          <div className="login-signal-grid">
+            <span><b>62%</b><em>sample reduction</em></span>
+            <span><b>RBAC</b><em>admin / analyst / viewer</em></span>
+            <span><b>BYO</b><em>OpenAI / Ollama / intel</em></span>
+          </div>
+        </section>
         <section className="login-card">
           <h1>{authMode === "login" ? "AI SOC SOAR Login" : "Register Access"}</h1>
           <p>{authMode === "login" ? "Phase-1 Auth + RBAC enabled" : "New accounts are created as viewer and require admin approval."}</p>
@@ -511,18 +529,22 @@ function App() {
               <div>
                 <p className="eyebrow">Executive Summary</p>
                 <h2>SOC posture from live Wazuh telemetry</h2>
-	                <p>{visibleAlertCount} alerts are available for triage. {highRiskAlerts} are high-risk. Average AI risk is {avgRisk}. {openIncidents} cases remain active.</p>
+	                <p>{visibleAlertCount} alerts are available for triage. {analystItems} analyst work items are currently estimated after grouping and suppression. {openIncidents} cases remain active.</p>
               </div>
               <div className="exec-score">
-                <span>Risk Index</span>
-                <strong>{avgRisk}</strong>
+                <span>Noise Reduced</span>
+                <strong>{noiseSummary?.estimated_noise_reduction_percent ?? 0}%</strong>
               </div>
             </section>
 	            <section className="metric-grid">
-	              <article className="metric"><span>Connectors</span><strong>{connectors.length}</strong></article>
-	              <article className="metric"><span>Healthy Connectors</span><strong>{healthyConnectors}</strong></article>
-	              <article className="metric"><span>Open Incidents</span><strong>{openIncidents}</strong></article>
-	              <article className="metric"><span>Noise Reduction</span><strong>{noiseSummary?.estimated_noise_reduction_percent ?? 0}%</strong></article>
+	              <article className="metric"><span>Critical Alerts</span><strong>{severityCounts.find((s) => s.severity === "critical")?.count || 0}</strong></article>
+	              <article className="metric"><span>High Alerts</span><strong>{severityCounts.find((s) => s.severity === "high")?.count || 0}</strong></article>
+	              <article className="metric"><span>Medium Alerts</span><strong>{severityCounts.find((s) => s.severity === "medium")?.count || 0}</strong></article>
+	              <article className="metric"><span>Low Alerts</span><strong>{severityCounts.find((s) => s.severity === "low")?.count || 0}</strong></article>
+	              <article className="metric"><span>Solved Cases</span><strong>{resolvedIncidents}</strong></article>
+	              <article className="metric"><span>Unsolved Cases</span><strong>{unsolvedIncidents}</strong></article>
+	              <article className="metric"><span>Analyst Items</span><strong>{analystItems}</strong></article>
+	              <article className="metric"><span>Grouped Duplicates</span><strong>{groupedDuplicates}</strong></article>
 	            </section>
             <section className="dashboard-grid">
               <article className="panel wide-panel">
@@ -654,10 +676,16 @@ function App() {
               <div><h2>AI Triage Workbench</h2><p>Analyst view with evidence, MITRE context, raw event data, and case handoff.</p></div>
               <span className="status-pill">{decisions.length} decisions</span>
             </div>
+            <div className="subnav">
+              <button className={triageSection === "queue" ? "active" : ""} onClick={() => setTriageSection("queue")}>Queue</button>
+              <button className={triageSection === "detail" ? "active" : ""} onClick={() => setTriageSection("detail")} disabled={!selectedAlertId}>Investigation</button>
+              <button className={triageSection === "history" ? "active" : ""} onClick={() => setTriageSection("history")}>Review History</button>
+            </div>
+            {triageSection === "queue" ? (
 	            <div className="alert-table">
 	              <div className="table-head"><span>Alert</span><span>Verdict</span><span>Signal</span><span>Noise</span><span>Queue</span></div>
 	              {decisions.map((d, index) => (
-	                <article className="alert-row" key={`${d.alert_id}-${index}`} onClick={() => setSelectedAlertId(d.alert_id)}>
+	                <article className="alert-row" key={`${d.alert_id}-${index}`} onClick={() => { setSelectedAlertId(d.alert_id); setTriageSection("detail"); }}>
 	                  <span><strong>{d.alert_id}</strong>{d.attack_summary}</span>
 	                  <span className={`severity ${verdictClass[d.verdict]}`}>{d.verdict}</span>
 	                  <span>{d.signal_score || d.risk_score} / {d.analyst_priority || "P3"}</span>
@@ -666,7 +694,8 @@ function App() {
 	                </article>
 	              ))}
 	            </div>
-            {selectedAlertId ? (
+            ) : null}
+            {triageSection === "detail" && selectedAlertId ? (
               <section className="panel detail-panel">
                 <h3>Alert Detail {selectedAlertId}</h3>
                 {(() => {
@@ -734,7 +763,7 @@ function App() {
                 })()}
               </section>
             ) : null}
-            <section className="panel detail-panel">
+            {triageSection === "history" ? <section className="panel detail-panel">
               <h3>Triage Review History</h3>
               <div className="admin-list">
                 {triageHistory.slice(0, 12).map((item, index) => (
@@ -743,7 +772,7 @@ function App() {
                   </article>
                 ))}
               </div>
-            </section>
+            </section> : null}
           </section>
         ) : null}
 
@@ -839,7 +868,52 @@ function App() {
           </section>
         ) : null}
 
-        {tab === "automation" ? <section className="panel"><h2>SOAR Hooks (Day 4 target)</h2><p>Approval-gated Shuffle execution panel will be enabled in Day 4/5 build. n8n remains optional for broad integration workflows.</p></section> : null}
+        {tab === "automation" ? (
+          <section className="panel">
+            <div className="section-title">
+              <div><h2>SOAR Automation</h2><p>Workflow handoff starts here. Shuffle is SOC-native; n8n can be used first when you want a quick self-hosted webhook workflow.</p></div>
+              <span className="status-pill">approval gated</span>
+            </div>
+            <div className="settings-grid">
+              <article className="panel detail-panel">
+                <h3>n8n Setup on Wazuh Machine</h3>
+                <ul className="check-list">
+                  <li>Install Docker and Docker Compose plugin.</li>
+                  <li>Run n8n on a non-conflicting port, recommended <code>5678</code>.</li>
+                  <li>Create a webhook workflow that accepts incident JSON from this app.</li>
+                  <li>Return a JSON response with status, ticket id, and workflow execution id.</li>
+                  <li>Share the webhook URL so it can be saved as <code>N8N_WEBHOOK_URL</code> or later into the app settings.</li>
+                </ul>
+                <pre className="command-box">{`docker volume create n8n_data
+docker run -d --name n8n --restart unless-stopped \\
+  -p 5678:5678 \\
+  -e N8N_HOST=0.0.0.0 \\
+  -e N8N_PORT=5678 \\
+  -e N8N_PROTOCOL=http \\
+  -v n8n_data:/home/node/.n8n \\
+  n8nio/n8n:latest`}</pre>
+              </article>
+              <article className="panel detail-panel">
+                <h3>MVP Workflow Actions</h3>
+                <div className="permission-grid">
+                  <span><b>Notify</b><em>Slack or email analyst channel for high-signal cases</em></span>
+                  <span><b>Create Ticket</b><em>Jira, TheHive, Linear, or simple webhook ticket</em></span>
+                  <span><b>Enrich IOC</b><em>Call VirusTotal, AbuseIPDB, OTX, MISP, or local IOC</em></span>
+                  <span><b>Contain</b><em>Block IP, disable user, isolate host only after approval</em></span>
+                </div>
+              </article>
+            </div>
+            <section className="panel detail-panel">
+              <h3>Automation Design Rules</h3>
+              <ul className="check-list">
+                <li>Read-only and notification actions can run from analyst approval.</li>
+                <li>Destructive actions must require admin approval and write an audit event.</li>
+                <li>Every workflow run must store request, response, actor, case id, and timestamp.</li>
+                <li>Shuffle remains the target SOC-native orchestrator; n8n is acceptable for the first MVP webhook demo.</li>
+              </ul>
+            </section>
+          </section>
+        ) : null}
 
         {tab === "settings" ? (
           <section className="panel">
@@ -851,9 +925,14 @@ function App() {
               <span className="status-pill">{aiProviders.filter((p) => p.enabled).length} AI active / {intelProviders.filter((p) => p.enabled).length} intel active</span>
             </div>
             {settingsMsg ? <p>{settingsMsg}</p> : null}
-            {user.role === "admin" ? (
+            <div className="subnav">
+              <button className={settingsSection === "ai" ? "active" : ""} onClick={() => setSettingsSection("ai")}>AI Models</button>
+              <button className={settingsSection === "intel" ? "active" : ""} onClick={() => setSettingsSection("intel")}>Threat Intel</button>
+              <button className={settingsSection === "status" ? "active" : ""} onClick={() => setSettingsSection("status")}>Provider Status</button>
+            </div>
+            {user.role === "admin" && settingsSection !== "status" ? (
               <div className="settings-grid">
-                <article className="panel detail-panel">
+                {settingsSection === "ai" ? <article className="panel detail-panel">
                   <h3>AI Provider</h3>
                   <div className="admin-form">
                     <select value={aiForm.provider} onChange={(e) => setAiForm({ ...aiForm, provider: e.target.value })}>
@@ -875,8 +954,8 @@ function App() {
                     <label className="checkbox-line"><input type="checkbox" checked={aiForm.cache_enabled} onChange={(e) => setAiForm({ ...aiForm, cache_enabled: e.target.checked })} /> Cache duplicate triage</label>
                     <button onClick={saveAiProvider}>Save AI provider</button>
                   </div>
-                </article>
-                <article className="panel detail-panel">
+                </article> : null}
+                {settingsSection === "intel" ? <article className="panel detail-panel">
                   <h3>Threat Intel Provider</h3>
                   <div className="admin-form">
                     <select value={intelForm.provider} onChange={(e) => setIntelForm({ ...intelForm, provider: e.target.value })}>
@@ -893,10 +972,10 @@ function App() {
                     <label className="checkbox-line"><input type="checkbox" checked={intelForm.enabled} onChange={(e) => setIntelForm({ ...intelForm, enabled: e.target.checked })} /> Enabled</label>
                     <button onClick={saveThreatIntelProvider}>Save intel provider</button>
                   </div>
-                </article>
+                </article> : null}
               </div>
             ) : null}
-            <div className="settings-grid">
+            {settingsSection === "status" || user.role !== "admin" ? <div className="settings-grid">
               <article className="panel detail-panel">
                 <h3>Configured AI Providers</h3>
                 <div className="admin-list">
@@ -919,14 +998,25 @@ function App() {
                   ))}
                 </div>
               </article>
-            </div>
+            </div> : null}
           </section>
         ) : null}
 
         {tab === "admin" && user.role === "admin" ? (
           <section className="panel">
-            <h2>Create User</h2>
-            <div className="admin-form">
+            <div className="section-title">
+              <div><h2>Admin Portal</h2><p>User governance, access approval, audit trail, and platform health.</p></div>
+              <span className="status-pill">{activeAnalysts} active analysts / {pendingUsers} pending</span>
+            </div>
+            <div className="subnav">
+              <button className={adminSection === "users" ? "active" : ""} onClick={() => setAdminSection("users")}>Users</button>
+              <button className={adminSection === "approvals" ? "active" : ""} onClick={() => setAdminSection("approvals")}>Approvals</button>
+              <button className={adminSection === "audit" ? "active" : ""} onClick={() => setAdminSection("audit")}>Audit</button>
+              <button className={adminSection === "health" ? "active" : ""} onClick={() => setAdminSection("health")}>Health</button>
+            </div>
+            {adminSection === "users" ? <>
+              <h3>Create User</h3>
+              <div className="admin-form">
               <input placeholder="Email" value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} />
               <input placeholder="Full name" value={newUser.full_name} onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })} />
               <input type="password" placeholder="Password" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} />
@@ -947,7 +1037,27 @@ function App() {
                 </article>
               ))}
             </div>
-            <h3>Audit Logs</h3>
+            </> : null}
+            {adminSection === "approvals" ? <>
+              <h3>Pending User Approval</h3>
+              <div className="admin-list">
+                {users.filter((u) => !u.is_active).map((u) => (
+                  <article key={u.id} className="admin-item">
+                    <span>{u.email} ({u.role}) waiting for activation</span>
+                    <button onClick={() => toggleActive(u.id, u.is_active)}>Approve</button>
+                  </article>
+                ))}
+                {users.filter((u) => !u.is_active).length === 0 ? <article className="admin-item"><span>No pending users.</span></article> : null}
+              </div>
+              <h3>Role Model</h3>
+              <div className="permission-grid">
+                <span><b>Admin</b><em>users, connectors, AI/intel keys, audit, all analyst actions</em></span>
+                <span><b>Analyst</b><em>sync, triage, feedback, cases, timeline, SOAR request</em></span>
+                <span><b>Viewer</b><em>read-only executive, alert, case, and connector visibility</em></span>
+              </div>
+            </> : null}
+            {adminSection === "audit" ? <>
+              <h3>Audit Logs</h3>
             <div className="admin-form">
               <input placeholder="action (e.g. login_success)" value={auditFilter.action} onChange={(e) => setAuditFilter({ ...auditFilter, action: e.target.value })} />
               <input placeholder="actor_user_id" value={auditFilter.actor_user_id} onChange={(e) => setAuditFilter({ ...auditFilter, actor_user_id: e.target.value })} />
@@ -960,7 +1070,16 @@ function App() {
                 </article>
               ))}
             </div>
-            <h3>Connector Health History</h3>
+            </> : null}
+            {adminSection === "health" ? <>
+              <h3>Platform Health</h3>
+              <div className="permission-grid">
+                <span><b>{connectors.length}</b><em>connectors configured</em></span>
+                <span><b>{healthyConnectors}</b><em>healthy connectors</em></span>
+                <span><b>{ingestionStatus?.stored_alerts || 0}</b><em>persisted alerts</em></span>
+                <span><b>{ingestionStatus?.triage_history || 0}</b><em>triage records</em></span>
+              </div>
+              <h3>Connector Health History</h3>
             <div className="admin-list">
               {connectorHistory.slice(0, 20).map((h) => (
                 <article key={h.id} className="admin-item">
@@ -968,6 +1087,7 @@ function App() {
                 </article>
               ))}
             </div>
+            </> : null}
           </section>
         ) : null}
       </section>

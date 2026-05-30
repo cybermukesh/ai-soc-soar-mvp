@@ -20,9 +20,47 @@ Use this checklist before switching from sample data to live pipeline mode.
 ## 3) n8n
 
 - [ ] n8n instance running
+- [ ] Port does not conflict with Wazuh/OpenSearch/app ports. Recommended: `5678`
+- [ ] Docker installed on the Wazuh machine or another reachable automation host
 - [ ] Webhook workflow created for SOAR action intake
 - [ ] `N8N_WEBHOOK_URL` set
 - [ ] Test webhook receives payload and returns success
+
+### Quick n8n Docker Start
+
+Run on the Wazuh machine or any reachable Linux host:
+
+```bash
+docker volume create n8n_data
+docker run -d --name n8n --restart unless-stopped \
+  -p 5678:5678 \
+  -e N8N_HOST=0.0.0.0 \
+  -e N8N_PORT=5678 \
+  -e N8N_PROTOCOL=http \
+  -v n8n_data:/home/node/.n8n \
+  n8nio/n8n:latest
+```
+
+Open:
+
+```text
+http://<wazuh-or-automation-host-ip>:5678
+```
+
+Create one workflow:
+
+- Trigger: Webhook
+- Method: POST
+- Path: `ai-soc-soar-action`
+- Response: JSON with `status`, `workflow_execution_id`, and optional `ticket_id`
+
+The webhook URL will look like:
+
+```text
+http://<host>:5678/webhook/ai-soc-soar-action
+```
+
+Share that URL with the app as `N8N_WEBHOOK_URL` for the first MVP demo.
 
 ## 4) App Readiness Checks
 
