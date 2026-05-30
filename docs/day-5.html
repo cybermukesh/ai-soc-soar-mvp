@@ -37,14 +37,18 @@
           <li>Executive dashboard charts added for severity distribution, incident status, and seven-day triage trend.</li>
           <li>Noise-reduction endpoint already exposes raw alert count, grouped duplicates, suppressed noise, analyst items, and reduction percentage.</li>
           <li>Current triage logic returns correlation key, correlation count, related alert count, entity frequency, suppression decision, and suppression reason.</li>
+          <li>Persisted correlation groups added with representative alert, grouped alert IDs, first/last seen, max risk, max signal, average noise, and suppression reason.</li>
+          <li>AI Triage Workbench now includes a Correlation Groups tab for L1/L2 investigation evidence.</li>
+          <li>Local IOC watchlist added for lab-safe enrichment without sending IOCs to external providers.</li>
+          <li>Alert detail can run local IOC enrichment and show match count, severity, checked candidates, and source metadata.</li>
         </ul>
       </section>
       <section class="panel">
         <h2>Still Building</h2>
         <ul>
-          <li>Persisted correlation group table with representative alert and grouped alert IDs.</li>
           <li>Promotion rule from repeated high-signal groups into incidents.</li>
           <li>Threat-intel IOC lookup cache and triage detail enrichment.</li>
+          <li>External threat-intel adapters for VirusTotal, AbuseIPDB, OTX, and MISP.</li>
           <li>Long-range metrics snapshots for 7 days, 15 days, 30 days, and 1 year.</li>
           <li>Analyst feedback override that influences duplicate triage decisions.</li>
         </ul>
@@ -53,6 +57,10 @@
         <h2>Evidence Endpoints</h2>
         <ul>
           <li><code>GET /triage/noise-reduction</code></li>
+          <li><code>GET /triage/correlation-groups</code></li>
+          <li><code>GET /api/v1/threat-intel/local-iocs</code></li>
+          <li><code>POST /api/v1/threat-intel/local-iocs</code></li>
+          <li><code>GET /api/v1/threat-intel/enrich-alert/{alert_id}</code></li>
           <li><code>GET /api/v1/alerts?limit=25&amp;offset=0</code></li>
           <li><code>GET /api/v1/incidents</code></li>
           <li><code>GET /api/v1/incidents/{id}/events</code></li>

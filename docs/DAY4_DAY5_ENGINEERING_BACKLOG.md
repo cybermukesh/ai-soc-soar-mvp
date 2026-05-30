@@ -42,8 +42,8 @@ Acceptance:
 - [x] Correlate alerts using rule, asset, source IP, user, and source tool.
 - [x] Return estimated analyst workload reduction.
 - [x] Cache repeated triage signatures.
-- [ ] Persist correlation groups as first-class objects.
-- [ ] Track group counts, first seen, last seen, representative alert, and grouped alert ids.
+- [x] Persist correlation groups as first-class objects.
+- [x] Track group counts, first seen, last seen, representative alert, and grouped alert ids.
 - [ ] Promote repeated high-signal groups to incidents automatically when policy allows.
 - [ ] Add feedback override so analyst verdicts influence future duplicate triage.
 - [ ] Add explainability trail for every suppress/group/escalate decision.
@@ -78,9 +78,11 @@ Acceptance:
 - [x] Support VirusTotal, AbuseIPDB, OTX, MISP, and local IOC list.
 - [x] Store API keys encrypted and masked.
 - [x] Add provider health checks.
-- [ ] Add IOC extraction from alert fields: IP, domain, hash, URL, username, host.
-- [ ] Add enrichment cache with TTL to prevent API overuse.
-- [ ] Show enrichment result in AI triage detail and case detail.
+- [x] Add IOC extraction from alert fields: IP, domain, hash, URL, username, host.
+- [x] Add local IOC watchlist and lab-safe local enrichment endpoint.
+- [ ] Add external enrichment cache with TTL to prevent API overuse.
+- [x] Show local enrichment result in AI triage detail.
+- [ ] Show external enrichment result in case detail.
 
 Acceptance:
 
@@ -128,6 +130,7 @@ Acceptance:
 - [ ] Add Shuffle connector settings.
 - [ ] Add workflow templates: notify Slack, create ticket, disable account, block IP, isolate host, request approval.
 - [ ] Add approval gate before destructive actions.
+- [x] Hold analyst-requested containment workflows as pending approval instead of dispatching immediately.
 - [x] Add action log with request payload summary, response, actor, status, and timestamp.
 
 Acceptance:

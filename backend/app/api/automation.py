@@ -161,21 +161,32 @@ async def trigger_workflow_template(
     if not connector or not connector.enabled or not webhook_url:
         raise HTTPException(status_code=400, detail="n8n webhook is not configured")
 
+    requested_workflow = str(payload.payload.get("requested_workflow", ""))
+    requires_admin_approval = requested_workflow == "containment_approval"
     run = AutomationWorkflowRun(
         template_id=template["id"],
         template_name=template["name"],
         connector_name=template["connector_name"],
-        status="pending",
+        status="pending_approval" if requires_admin_approval and user.role.name != "admin" else "pending",
         incident_id=payload.incident_id,
         alert_id=payload.alert_id,
         request_summary=(
-            f"dry_run={payload.dry_run}; keys={','.join(sorted(payload.payload.keys()))[:400]}"
+            f"workflow={requested_workflow or 'unspecified'}; dry_run={payload.dry_run}; keys={','.join(sorted(payload.payload.keys()))[:360]}"
         ),
         triggered_by_user_id=user.id,
     )
     db.add(run)
     db.flush()
     _audit(db, user, "trigger_workflow", str(run.id), template["id"])
+
+    if run.status == "pending_approval":
+        run.response_detail = "High-impact containment workflow is waiting for admin approval"
+        run.completed_at = datetime.now(timezone.utc)
+        connector.last_status = "pending_approval"
+        connector.last_error = ""
+        db.commit()
+        db.refresh(run)
+        return _run_out(run)
 
     outbound = {
         "template_id": template["id"],

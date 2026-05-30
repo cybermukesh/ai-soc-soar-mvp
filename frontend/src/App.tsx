@@ -62,6 +62,8 @@ type ThreatIntelProvider = { id: number; provider: string; api_key_masked: strin
 type AutomationConnector = { id: number; name: string; connector_type: string; enabled: boolean; webhook_url_masked: string; last_status: string; last_error: string; updated_at: string };
 type WorkflowTemplate = { id: string; name: string; description: string; connector_name: string; action: string; enabled: boolean };
 type WorkflowRun = { id: number; template_id: string; template_name: string; connector_name: string; status: string; incident_id: string; alert_id: string; request_summary: string; response_detail: string; triggered_by_user_id: number; created_at: string; completed_at: string };
+type CorrelationGroup = { correlation_key: string; representative_alert_id: string; verdict: string; queue: string; suppression_decision: string; suppression_reason: string; alert_count: number; max_risk_score: number; max_signal_score: number; avg_noise_score: number; alert_ids: string[]; first_seen: string; last_seen: string; updated_at: string };
+type LocalIoc = { id: number; indicator: string; indicator_type: string; severity: string; description: string; source: string; enabled: boolean; created_at: string; updated_at: string };
 
 const verdictClass: Record<TriageDecision["verdict"], string> = {
   false_positive: "sev-low",
@@ -111,7 +113,7 @@ function App() {
   const [settingsMsg, setSettingsMsg] = React.useState("");
   const [settingsSection, setSettingsSection] = React.useState<"ai" | "intel" | "status">("ai");
   const [adminSection, setAdminSection] = React.useState<"users" | "approvals" | "audit" | "health">("users");
-  const [triageSection, setTriageSection] = React.useState<"queue" | "detail" | "history">("queue");
+  const [triageSection, setTriageSection] = React.useState<"queue" | "detail" | "groups" | "history">("queue");
   const [caseSection, setCaseSection] = React.useState<"board" | "intake" | "timeline" | "closure">("board");
   const [alertFilter, setAlertFilter] = React.useState({ q: "", severity: "", queue: "", verdict: "" });
   const [automationMsg, setAutomationMsg] = React.useState("");
@@ -119,8 +121,12 @@ function App() {
   const [automationConnectors, setAutomationConnectors] = React.useState<AutomationConnector[]>([]);
   const [workflowTemplates, setWorkflowTemplates] = React.useState<WorkflowTemplate[]>([]);
   const [workflowRuns, setWorkflowRuns] = React.useState<WorkflowRun[]>([]);
+  const [correlationGroups, setCorrelationGroups] = React.useState<CorrelationGroup[]>([]);
+  const [localIocs, setLocalIocs] = React.useState<LocalIoc[]>([]);
+  const [enrichmentResult, setEnrichmentResult] = React.useState<Record<string, any> | null>(null);
   const [aiForm, setAiForm] = React.useState({ provider: "openai", model: "gpt-4o-mini", api_key: "", base_url: "", enabled: true, cache_enabled: true, max_input_chars: 6000, max_output_tokens: 700, min_severity: "medium", fallback_model: "" });
   const [intelForm, setIntelForm] = React.useState({ provider: "virustotal", api_key: "", base_url: "", enabled: false, daily_limit: 500, cache_ttl_minutes: 1440 });
+  const [localIocForm, setLocalIocForm] = React.useState({ indicator: "", indicator_type: "ip", severity: "medium", description: "", source: "local", enabled: true });
   const healthyConnectors = connectors.filter((c) => c.last_status === "ok").length;
   const openIncidents = incidents.filter((i) => i.status !== "resolved").length;
   const resolvedIncidents = incidents.filter((i) => i.status === "resolved" || i.phase === "closed").length;
@@ -193,8 +199,15 @@ function App() {
       .catch(() => setTriageHistory([]));
     fetch(`${API}/triage/noise-reduction?limit=100`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
-      .then((data) => setNoiseSummary(data.summary || null))
+      .then((data) => {
+        setNoiseSummary(data.summary || null);
+        setCorrelationGroups(Array.isArray(data.correlation_groups) ? data.correlation_groups : []);
+      })
       .catch(() => setNoiseSummary(null));
+    fetch(`${API}/triage/correlation-groups?limit=50`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => setCorrelationGroups(Array.isArray(data.groups) ? data.groups : []))
+      .catch(() => setCorrelationGroups([]));
   }, [token]);
 
   React.useEffect(() => {
@@ -244,6 +257,10 @@ function App() {
       .then((r) => r.json())
       .then((data) => setIntelProviders(Array.isArray(data) ? data : []))
       .catch(() => setIntelProviders([]));
+    fetch(`${API}/api/v1/threat-intel/local-iocs`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => setLocalIocs(Array.isArray(data.items) ? data.items : []))
+      .catch(() => setLocalIocs([]));
   }, [token, settingsMsg]);
 
   React.useEffect(() => {
@@ -351,6 +368,23 @@ function App() {
     setSettingsMsg(`${provider}: ${data.detail || "health check failed"}`);
   }
 
+  async function saveLocalIoc() {
+    if (!localIocForm.indicator.trim()) {
+      setSettingsMsg("Local IOC indicator is required");
+      return;
+    }
+    const res = await fetch(`${API}/api/v1/threat-intel/local-iocs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(localIocForm),
+    });
+    const data = await res.json().catch(() => ({}));
+    setSettingsMsg(res.ok ? `Saved local IOC ${data.indicator}` : `Failed: ${data.detail || "error"}`);
+    if (res.ok) {
+      setLocalIocForm({ indicator: "", indicator_type: "ip", severity: "medium", description: "", source: "local", enabled: true });
+    }
+  }
+
   async function syncWazuhNow() {
     setIngestionMsg("Syncing Wazuh alerts from OpenSearch...");
     const res = await fetch(`${API}/api/v1/ingestion/wazuh/sync?limit=100&triage=true`, {
@@ -448,6 +482,14 @@ function App() {
       setTriageHistory(Array.isArray(history) ? history : []);
       setTriageFeedback({ disposition: "needs_investigation", note: "" });
     }
+  }
+
+  async function enrichSelectedAlert(alertId: string) {
+    const res = await fetch(`${API}/api/v1/threat-intel/enrich-alert/${encodeURIComponent(alertId)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json().catch(() => ({}));
+    setEnrichmentResult(res.ok ? data : { error: data.detail || "enrichment failed" });
   }
 
   async function requestAutomationRun() {
@@ -819,6 +861,7 @@ function App() {
             <div className="subnav">
               <button className={triageSection === "queue" ? "active" : ""} onClick={() => setTriageSection("queue")}>Queue</button>
               <button className={triageSection === "detail" ? "active" : ""} onClick={() => setTriageSection("detail")} disabled={!selectedAlertId}>Investigation</button>
+              <button className={triageSection === "groups" ? "active" : ""} onClick={() => setTriageSection("groups")}>Correlation Groups</button>
               <button className={triageSection === "history" ? "active" : ""} onClick={() => setTriageSection("history")}>Review History</button>
             </div>
             {triageSection === "queue" ? (
@@ -916,6 +959,10 @@ function App() {
                         <pre>{JSON.stringify(alert.raw_event, null, 2)}</pre>
                       </article>
                       <article>
+                        <button onClick={() => enrichSelectedAlert(alert.alert_id)}>Run local IOC enrichment</button>
+                        {enrichmentResult?.alert_id === alert.alert_id || enrichmentResult?.error ? (
+                          <pre className="command-box">{JSON.stringify(enrichmentResult, null, 2)}</pre>
+                        ) : null}
                         <button onClick={() => raiseTicketFromAlert(alert.alert_id)}>Raise ticket</button>
                       </article>
                     </div>
@@ -931,6 +978,25 @@ function App() {
                     <span>{item.updated_at || "-"} | {item.alert_id} | {item.disposition || "pending"} | {item.note || "no note"}</span>
                   </article>
                 ))}
+              </div>
+            </section> : null}
+            {triageSection === "groups" ? <section className="panel detail-panel">
+              <div className="section-title">
+                <div><h3>Persisted Correlation Groups</h3><p>Grouped evidence by rule, asset, source, user, verdict, and queue.</p></div>
+                <span className="status-pill">{correlationGroups.length} groups</span>
+              </div>
+              <div className="case-board">
+                {correlationGroups.map((group) => (
+                  <article className="case-card" key={group.correlation_key}>
+                    <strong>{group.queue || "review"} | {group.alert_count} alerts</strong>
+                    <span>Representative: {group.representative_alert_id} | verdict {group.verdict}</span>
+                    <span>Signal {group.max_signal_score} | Risk {group.max_risk_score} | Avg noise {group.avg_noise_score}</span>
+                    <p>{group.suppression_decision}: {group.suppression_reason || "no suppression reason captured"}</p>
+                    <p>{group.correlation_key}</p>
+                    <small>{group.alert_ids.slice(0, 6).join(", ")}{group.alert_ids.length > 6 ? " ..." : ""}</small>
+                  </article>
+                ))}
+                {correlationGroups.length === 0 ? <article className="empty-state">No persisted groups yet. Run triage or noise reduction to create grouping evidence.</article> : null}
               </div>
             </section> : null}
           </section>
@@ -1241,6 +1307,30 @@ docker run -d --name n8n --restart unless-stopped \\
                     <input type="number" min={5} max={43200} value={intelForm.cache_ttl_minutes} onChange={(e) => setIntelForm({ ...intelForm, cache_ttl_minutes: Number(e.target.value) || 1440 })} />
                     <label className="checkbox-line"><input type="checkbox" checked={intelForm.enabled} onChange={(e) => setIntelForm({ ...intelForm, enabled: e.target.checked })} /> Enabled</label>
                     <button onClick={saveThreatIntelProvider}>Save intel provider</button>
+                  </div>
+                </article> : null}
+                {settingsSection === "intel" ? <article className="panel detail-panel">
+                  <h3>Local IOC Watchlist</h3>
+                  <div className="admin-form">
+                    <input placeholder="Indicator (IP, domain, hash, username, host)" value={localIocForm.indicator} onChange={(e) => setLocalIocForm({ ...localIocForm, indicator: e.target.value })} />
+                    <select value={localIocForm.indicator_type} onChange={(e) => setLocalIocForm({ ...localIocForm, indicator_type: e.target.value })}>
+                      <option value="ip">IP</option><option value="domain">Domain</option><option value="hash">Hash</option><option value="url">URL</option><option value="user">User</option><option value="host">Host</option>
+                    </select>
+                    <select value={localIocForm.severity} onChange={(e) => setLocalIocForm({ ...localIocForm, severity: e.target.value })}>
+                      <option value="low">low</option><option value="medium">medium</option><option value="high">high</option><option value="critical">critical</option>
+                    </select>
+                    <input placeholder="Source" value={localIocForm.source} onChange={(e) => setLocalIocForm({ ...localIocForm, source: e.target.value })} />
+                    <input placeholder="Description" value={localIocForm.description} onChange={(e) => setLocalIocForm({ ...localIocForm, description: e.target.value })} />
+                    <label className="checkbox-line"><input type="checkbox" checked={localIocForm.enabled} onChange={(e) => setLocalIocForm({ ...localIocForm, enabled: e.target.checked })} /> Enabled</label>
+                    <button onClick={saveLocalIoc}>Save local IOC</button>
+                  </div>
+                  <div className="admin-list">
+                    {localIocs.slice(0, 10).map((ioc) => (
+                      <article className="admin-item" key={ioc.id}>
+                        <span>{ioc.indicator} | {ioc.indicator_type} | {ioc.severity} | enabled={String(ioc.enabled)} | {ioc.description || ioc.source}</span>
+                      </article>
+                    ))}
+                    {localIocs.length === 0 ? <article className="empty-state">No local IOCs configured yet.</article> : null}
                   </div>
                 </article> : null}
               </div>

@@ -14,13 +14,18 @@ from app.connectors.opensearch import fetch_recent_wazuh_alerts, opensearch_conf
 from app.db.models import AiProviderSetting, Base, ThreatIntelProviderSetting
 from app.db.sqlite_store import (
     count_alerts,
+    add_local_ioc,
+    enrich_alert_with_local_iocs,
     init_db,
     list_alerts,
+    list_correlation_groups,
     list_ingestion_runs,
     list_triage_history,
+    list_local_iocs,
     record_ingestion_run,
     update_triage_feedback,
     upsert_alert,
+    upsert_correlation_groups,
     upsert_triage,
 )
 from app.db.session import engine, SessionLocal
@@ -497,6 +502,7 @@ def triage_recent_alerts(
     for alert, decision in zip(alerts, decisions):
         upsert_alert(alert)
         upsert_triage(decision)
+    upsert_correlation_groups(alerts, decisions)
     return TriageBatchResponse(decisions=decisions)
 
 
@@ -513,8 +519,10 @@ def triage_noise_reduction(
     for alert, decision in zip(alerts, decisions):
         upsert_alert(alert)
         upsert_triage(decision)
+    groups = upsert_correlation_groups(alerts, decisions)
     return {
         "summary": noise_reduction_summary(decisions),
+        "correlation_groups": groups[:20],
         "top_signals": [
             decision.model_dump()
             for decision in sorted(decisions, key=lambda item: (item.signal_score, item.risk_score), reverse=True)[:10]
@@ -532,6 +540,54 @@ def triage_history(
     _: Session = Depends(require_role("admin", "analyst", "viewer")),
 ) -> list[TriageHistoryEntry]:
     return list_triage_history(limit=limit)
+
+
+@app.get("/triage/correlation-groups")
+def triage_correlation_groups(
+    limit: int = 50,
+    min_count: int = 1,
+    queue: str = "",
+    _: Session = Depends(require_role("admin", "analyst", "viewer")),
+) -> dict:
+    groups = list_correlation_groups(limit=limit, min_count=min_count, queue=queue)
+    return {"total": len(groups), "groups": groups}
+
+
+@app.get("/api/v1/threat-intel/local-iocs")
+def threat_intel_local_iocs(
+    limit: int = 200,
+    _: Session = Depends(require_role("admin", "analyst", "viewer")),
+) -> dict:
+    return {"items": list_local_iocs(limit=limit), "total": len(list_local_iocs(limit=limit))}
+
+
+@app.post("/api/v1/threat-intel/local-iocs")
+def threat_intel_add_local_ioc(
+    payload: dict,
+    _: Session = Depends(require_role("admin", "analyst")),
+) -> dict:
+    indicator = str(payload.get("indicator", "")).strip()
+    if not indicator:
+        raise HTTPException(status_code=400, detail="indicator is required")
+    return add_local_ioc(
+        indicator=indicator,
+        indicator_type=str(payload.get("indicator_type", "ip")),
+        severity=str(payload.get("severity", "medium")),
+        description=str(payload.get("description", "")),
+        source=str(payload.get("source", "local")),
+        enabled=bool(payload.get("enabled", True)),
+    )
+
+
+@app.get("/api/v1/threat-intel/enrich-alert/{alert_id}")
+def threat_intel_enrich_alert(
+    alert_id: str,
+    _: Session = Depends(require_role("admin", "analyst", "viewer")),
+) -> dict:
+    matches = [alert for alert in list_alerts(limit=1000) if alert.alert_id == alert_id]
+    if not matches:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return enrich_alert_with_local_iocs(matches[0])
 
 
 @app.post("/triage/feedback")
@@ -611,6 +667,7 @@ def triage_single_alert(
     decision = triage_alert(request.alert, force_refresh=request.force_refresh)
     upsert_alert(request.alert)
     upsert_triage(decision)
+    upsert_correlation_groups([request.alert], [decision])
     return decision.model_dump()
 
 
@@ -620,4 +677,5 @@ def triage_sample_alerts(
 ) -> TriageBatchResponse:
     alerts = load_normalized_sample_alerts()
     decisions = triage_alerts(alerts, force_refresh=force_refresh)
+    upsert_correlation_groups(alerts, decisions)
     return TriageBatchResponse(decisions=decisions)

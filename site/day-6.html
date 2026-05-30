@@ -38,6 +38,7 @@
           <li><code>GET /api/v1/automation/workflow-runs</code> returns persisted workflow execution history.</li>
           <li>Automation write path is limited to admin and analyst roles and creates audit log records.</li>
           <li>Frontend SOAR console lets analysts select workflow, case, alert, and approval note before requesting a run.</li>
+          <li>Analyst-requested containment workflows are recorded as <code>pending_approval</code> instead of dispatching immediately.</li>
         </ul>
       </section>
       <section class="panel">
@@ -52,7 +53,7 @@
         <h2>Still Building</h2>
         <ul>
           <li>Shuffle adapter and SOC-native workflow template pack.</li>
-          <li>Approval queue with approve/reject controls for destructive actions.</li>
+          <li>Admin approve/reject controls for pending destructive actions.</li>
           <li>Outbound request signing, retry/backoff, and dead-letter tracking.</li>
           <li>Case timeline integration for queued, running, success, and failed automation steps.</li>
         </ul>

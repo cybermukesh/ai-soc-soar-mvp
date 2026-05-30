@@ -120,8 +120,12 @@ It is intentionally detailed and operational (not pitch-level).
 - [x] masked API key storage for threat-intel providers
 - [x] provider health/status checks without exposing secrets
 - [x] frontend AI & Intel control plane
+- [x] local IOC watchlist table and API
+- [x] local IOC frontend CRUD panel
+- [x] lab-safe local enrichment endpoint for stored alerts
 - [ ] triage service reads active AI settings from DB for cloud/local model calls
-- [ ] real threat-intel lookup and IOC enrichment cache
+- [x] local IOC lookup and enrichment source path
+- [ ] external threat-intel lookup and provider-specific cache
 
 ### Incident Lifecycle
 - [x] incident schema and incident events schema
@@ -159,6 +163,9 @@ It is intentionally detailed and operational (not pitch-level).
 - [x] grouping key strategy (asset+rule+window+src) exposed in triage output
 - [x] alert queue filters in frontend triage workbench
 - [x] case lifecycle subsections for board, intake, timeline, and closure
+- [x] persisted correlation groups table
+- [x] correlation group API with representative alert, alert IDs, first/last seen, risk, signal, and noise score
+- [x] frontend Correlation Groups tab in AI Triage workbench
 - [ ] dedupe window and merge policy
 - [ ] promotion rule from repeated suspicious alerts to incident
 
@@ -182,13 +189,15 @@ It is intentionally detailed and operational (not pitch-level).
 - [x] workflow template listing API
 - [x] workflow run listing API
 - [x] bounded test trigger API with RBAC and audit logging
+- [x] analyst containment requests are held as `pending_approval` instead of dispatching immediately
 - [ ] outbound request signing/secret handling
 - [x] execution logs persisted for n8n webhook attempts
 - [ ] Shuffle adapter and workflow template set
 
 ### Human-in-the-Loop Controls
 - [x] frontend marks containment workflow as non-dry-run and captures approval note
-- [ ] backend approval gate for high-impact actions
+- [x] backend approval hold for analyst-requested containment workflow
+- [ ] admin approval/reject endpoint for pending high-impact actions
 - [ ] per-severity auto/approval policy
 - [ ] retry/backoff + dead-letter tracking
 

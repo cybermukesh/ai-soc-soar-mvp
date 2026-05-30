@@ -12,8 +12,8 @@ Convert noisy SIEM alerts into prioritized, explainable incidents and trigger an
 - Day 2: Complete - product plan plus backend foundation (DB/session, auth, JWT, RBAC, admin APIs, audit logs).
 - Day 3: Complete - connector layer with persisted configs, health checks, encrypted secret path, connector history/audit, and live Wazuh/OpenSearch probe validation.
 - Day 4: In progress - AI triage depth, analyst feedback, incident lifecycle, AI model settings, and threat-intel provider control plane.
-- Day 5: In progress - alert queue filters, case lifecycle sections, executive metrics, and measurable noise-reduction evidence.
-- Day 6: In progress - n8n SOAR connector state, workflow template API, trigger API, persisted workflow run logs, and frontend request console.
+- Day 5: In progress - alert queue filters, persisted correlation groups, local IOC enrichment, case lifecycle sections, executive metrics, and measurable noise-reduction evidence.
+- Day 6: In progress - n8n SOAR connector state, workflow template API, trigger API, persisted workflow run logs, frontend request console, and first high-impact approval hold.
 - Day 7: Planned - demo hardening, security review, CI/CD polish, and judge-ready evidence.
 
 ## Core Flow
@@ -67,7 +67,7 @@ flowchart LR
 - Core logic consumes normalized alerts so Splunk, Sentinel, Elastic, QRadar, or EDR sources can be added later.
 - AI triage returns structured JSON with verdict, confidence, evidence, risk score, and recommended actions.
 - Repeated alerts should use cached triage to reduce token usage.
-- Current SOAR foundation records workflow runs and audit events. High-impact approval gates are the next backend control before destructive response actions.
+- Current SOAR foundation records workflow runs and audit events. Analyst-requested containment workflows are held as pending approval before destructive response actions.
 
 ## Cyber Authorization Boundaries
 
@@ -123,6 +123,9 @@ soar/             n8n and Shuffle workflow templates
 - `GET /api/v1/settings/threat-intel`: lists VirusTotal, AbuseIPDB, OTX, MISP, and local IOC settings with masked secrets.
 - `PUT /api/v1/settings/threat-intel/{provider}`: admin-only update for API key, base URL, daily limit, and enrichment cache TTL.
 - `POST /api/v1/settings/threat-intel/{provider}/health`: validates threat-intel configuration state.
+- `GET /api/v1/threat-intel/local-iocs`: lists lab-local IOC watchlist entries.
+- `POST /api/v1/threat-intel/local-iocs`: creates or updates a local IOC.
+- `GET /api/v1/threat-intel/enrich-alert/{alert_id}`: matches a stored alert against local IOCs without external API calls.
 
 ## 7-Day Build Plan
 
