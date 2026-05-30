@@ -129,7 +129,7 @@ Acceptance:
 - [x] Add first workflow template: n8n test webhook with case/alert context.
 - [ ] Add Shuffle connector settings.
 - [ ] Add workflow templates: notify Slack, create ticket, disable account, block IP, isolate host, request approval.
-- [ ] Add approval gate before destructive actions.
+- [x] Add approval gate before destructive actions.
 - [x] Hold analyst-requested containment workflows as pending approval instead of dispatching immediately.
 - [x] Add action log with request payload summary, response, actor, status, and timestamp.
 

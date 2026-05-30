@@ -28,6 +28,11 @@ class TriggerWorkflowRequest(BaseModel):
     payload: dict = Field(default_factory=dict)
 
 
+class WorkflowApprovalRequest(BaseModel):
+    decision: str = "approve"
+    note: str = ""
+
+
 class WorkflowRunOut(BaseModel):
     id: int
     template_id: str

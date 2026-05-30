@@ -529,6 +529,18 @@ function App() {
     }
   }
 
+  async function decideAutomationRun(runId: number, decision: "approve" | "reject") {
+    const note = window.prompt(`${decision} workflow run #${runId}. Add admin note:`, decision === "approve" ? "Approved for lab execution" : "Rejected by admin");
+    if (note === null) return;
+    const res = await fetch(`${API}/api/v1/automation/workflow-runs/${runId}/approval`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ decision, note }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setAutomationMsg(res.ok ? `Workflow run #${data.id} ${data.status}` : `Approval failed: ${data.detail || "error"}`);
+  }
+
   async function login() {
     setLoading(true);
     setError("");
@@ -1192,7 +1204,7 @@ function App() {
               <h3>Workflow Run History</h3>
               <div className="table-wrap">
                 <table>
-                  <thead><tr><th>ID</th><th>Template</th><th>Status</th><th>Case</th><th>Alert</th><th>Response</th><th>Completed</th></tr></thead>
+                  <thead><tr><th>ID</th><th>Template</th><th>Status</th><th>Case</th><th>Alert</th><th>Response</th><th>Completed</th><th>Admin</th></tr></thead>
                   <tbody>
                     {workflowRuns.slice(0, 8).map((run) => (
                       <tr key={run.id}>
@@ -1203,9 +1215,17 @@ function App() {
                         <td>{run.alert_id || "-"}</td>
                         <td>{run.response_detail || run.request_summary}</td>
                         <td>{run.completed_at ? new Date(run.completed_at).toLocaleString() : "queued"}</td>
+                        <td>
+                          {user.role === "admin" && run.status === "pending_approval" ? (
+                            <span className="inline-actions">
+                              <button onClick={() => decideAutomationRun(run.id, "approve")}>Approve</button>
+                              <button onClick={() => decideAutomationRun(run.id, "reject")}>Reject</button>
+                            </span>
+                          ) : "-"}
+                        </td>
                       </tr>
                     ))}
-                    {workflowRuns.length === 0 ? <tr><td colSpan={7}>No automation runs yet. Configure n8n and request a workflow run from a case or alert.</td></tr> : null}
+                    {workflowRuns.length === 0 ? <tr><td colSpan={8}>No automation runs yet. Configure n8n and request a workflow run from a case or alert.</td></tr> : null}
                   </tbody>
                 </table>
               </div>

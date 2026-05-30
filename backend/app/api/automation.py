@@ -12,6 +12,7 @@ from app.db.session import get_db
 from app.models.automation import (
     AutomationConnectorOut,
     TriggerWorkflowRequest,
+    WorkflowApprovalRequest,
     WorkflowRunOut,
     WorkflowTemplateOut,
 )
@@ -158,16 +159,15 @@ async def trigger_workflow_template(
         .first()
     )
     webhook_url = settings.n8n_webhook_url.strip()
-    if not connector or not connector.enabled or not webhook_url:
-        raise HTTPException(status_code=400, detail="n8n webhook is not configured")
-
     requested_workflow = str(payload.payload.get("requested_workflow", ""))
     requires_admin_approval = requested_workflow == "containment_approval"
+    if (not connector or not connector.enabled or not webhook_url) and not requires_admin_approval:
+        raise HTTPException(status_code=400, detail="n8n webhook is not configured")
     run = AutomationWorkflowRun(
         template_id=template["id"],
         template_name=template["name"],
         connector_name=template["connector_name"],
-        status="pending_approval" if requires_admin_approval and user.role.name != "admin" else "pending",
+        status="pending_approval" if requires_admin_approval else "pending",
         incident_id=payload.incident_id,
         alert_id=payload.alert_id,
         request_summary=(
@@ -202,6 +202,73 @@ async def trigger_workflow_template(
             response = await client.post(webhook_url, json=outbound)
         run.status = "success" if response.status_code < 400 else "error"
         run.response_detail = f"HTTP {response.status_code}: {response.text[:450]}"
+    except httpx.HTTPError as exc:
+        run.status = "error"
+        run.response_detail = str(exc)[:500]
+
+    run.completed_at = datetime.now(timezone.utc)
+    connector.last_status = run.status
+    connector.last_error = "" if run.status == "success" else run.response_detail[:300]
+    db.commit()
+    db.refresh(run)
+    return _run_out(run)
+
+
+@router.post("/workflow-runs/{run_id}/approval", response_model=WorkflowRunOut)
+async def approve_workflow_run(
+    run_id: int,
+    payload: WorkflowApprovalRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role("admin")),
+):
+    run = db.query(AutomationWorkflowRun).filter(AutomationWorkflowRun.id == run_id).first()
+    if not run:
+        raise HTTPException(status_code=404, detail="Workflow run not found")
+    if run.status != "pending_approval":
+        raise HTTPException(status_code=400, detail="Workflow run is not pending approval")
+
+    decision = payload.decision.lower().strip()
+    if decision not in {"approve", "reject"}:
+        raise HTTPException(status_code=400, detail="decision must be approve or reject")
+
+    ensure_automation_connectors(db)
+    connector = db.query(AutomationConnector).filter(AutomationConnector.name == run.connector_name).first()
+    webhook_url = settings.n8n_webhook_url.strip()
+    if decision == "reject":
+        run.status = "rejected"
+        run.response_detail = f"Rejected by admin {user.email}: {payload.note}"[:500]
+        run.completed_at = datetime.now(timezone.utc)
+        if connector:
+            connector.last_status = "rejected"
+            connector.last_error = ""
+        _audit(db, user, "reject_workflow", str(run.id), payload.note)
+        db.commit()
+        db.refresh(run)
+        return _run_out(run)
+
+    if not connector or not connector.enabled or not webhook_url:
+        raise HTTPException(status_code=400, detail="n8n webhook is not configured")
+
+    outbound = {
+        "template_id": run.template_id,
+        "template_name": run.template_name,
+        "workflow_run_id": run.id,
+        "incident_id": run.incident_id,
+        "alert_id": run.alert_id,
+        "request_summary": run.request_summary,
+        "approval": {
+            "decision": decision,
+            "note": payload.note,
+            "approved_by_user_id": user.id,
+            "approved_by_email": user.email,
+        },
+    }
+    _audit(db, user, "approve_workflow", str(run.id), payload.note)
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.post(webhook_url, json=outbound)
+        run.status = "success" if response.status_code < 400 else "error"
+        run.response_detail = f"APPROVED HTTP {response.status_code}: {response.text[:420]}"
     except httpx.HTTPError as exc:
         run.status = "error"
         run.response_detail = str(exc)[:500]

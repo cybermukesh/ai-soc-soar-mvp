@@ -197,7 +197,8 @@ It is intentionally detailed and operational (not pitch-level).
 ### Human-in-the-Loop Controls
 - [x] frontend marks containment workflow as non-dry-run and captures approval note
 - [x] backend approval hold for analyst-requested containment workflow
-- [ ] admin approval/reject endpoint for pending high-impact actions
+- [x] admin approval/reject endpoint for pending high-impact actions
+- [x] frontend approve/reject buttons in workflow run history
 - [ ] per-severity auto/approval policy
 - [ ] retry/backoff + dead-letter tracking
 
@@ -205,8 +206,8 @@ It is intentionally detailed and operational (not pitch-level).
 - [x] SOAR automation request console in the analyst dashboard
 - [x] case and alert selectors for action context
 - [x] role-aware automation request blocking for viewer users
+- [x] approval queue controls inside workflow run history
 - [ ] execution status timeline (queued/running/success/fail)
-- [ ] approval queue with approve/reject buttons
 
 ## Day 7 (Planned) - Demo Readiness + Security Hardening
 

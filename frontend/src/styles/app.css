@@ -772,7 +772,8 @@ h3 {
 
 .admin-item button,
 .connector-card button,
-.incident-actions button {
+.incident-actions button,
+.inline-actions button {
   min-height: 32px;
   border: 1px solid #d0d5dd;
   border-radius: 8px;
@@ -1019,6 +1020,12 @@ h3 {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.inline-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .closure-grid {
