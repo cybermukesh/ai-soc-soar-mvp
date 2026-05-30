@@ -1,1 +1,63 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Day 6</title><link rel="stylesheet" href="style.css"></head><body><div class="layout"><aside class="sidebar"><div class="brand">AI SOC SOAR MVP</div><div class="sub">GitBook-style judge docs</div><nav class="menu"><a href="index.html">Overview</a><a href="day-1.html">Day 1</a><a href="day-2.html">Day 2</a><a href="day-3.html">Day 3</a><a href="day-4.html">Day 4</a><a href="day-5.html">Day 5</a><a class="active" href="day-6.html">Day 6</a><a href="day-7.html">Day 7</a></nav></aside><main class="content"><section class="hero"><p class="kicker">Day 6</p><h1>SOAR Execution and Analyst Control</h1><span class="status progress">Planned</span><p>Will connect incidents to approval-gated n8n/Shuffle action workflows with auditable execution logs.</p></section><section class="panel"><h2>Planned Work</h2><ul><li>SOAR action request schema and approval status model.</li><li>n8n and Shuffle executor adapters.</li><li>Slack notification wiring for state changes.</li><li>Action log and retry visibility in UI.</li></ul></section></main></div></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Day 6 - SOAR Controls</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">AI SOC SOAR MVP</div>
+      <div class="sub">GitBook-style judge docs</div>
+      <nav class="menu">
+        <a href="index.html">Overview</a>
+        <a href="day-1.html">Day 1</a>
+        <a href="day-2.html">Day 2</a>
+        <a href="day-3.html">Day 3</a>
+        <a href="day-4.html">Day 4</a>
+        <a href="day-5.html">Day 5</a>
+        <a class="active" href="day-6.html">Day 6</a>
+        <a href="day-7.html">Day 7</a>
+      </nav>
+    </aside>
+    <main class="content">
+      <section class="hero">
+        <p class="kicker">Day 6</p>
+        <h1>SOAR Execution and Analyst Control</h1>
+        <span class="status progress">In Progress</span>
+        <p>Day 6 now has the first automation backbone: n8n connector state, workflow templates, trigger API, run logs, RBAC, and frontend request flow.</p>
+      </section>
+      <section class="panel">
+        <h2>Completed This Sprint</h2>
+        <ul>
+          <li><code>GET /api/v1/automation/connectors</code> lists automation connectors and n8n configuration state.</li>
+          <li><code>GET /api/v1/automation/workflow-templates</code> exposes the first n8n test webhook template.</li>
+          <li><code>POST /api/v1/automation/workflow-templates/n8n-test-webhook/trigger</code> dispatches bounded case and alert context to n8n.</li>
+          <li><code>GET /api/v1/automation/workflow-runs</code> returns persisted workflow execution history.</li>
+          <li>Automation write path is limited to admin and analyst roles and creates audit log records.</li>
+          <li>Frontend SOAR console lets analysts select workflow, case, alert, and approval note before requesting a run.</li>
+        </ul>
+      </section>
+      <section class="panel">
+        <h2>Current Integration Gate</h2>
+        <ul>
+          <li>Set <code>N8N_WEBHOOK_URL</code> in the backend environment after n8n is installed.</li>
+          <li>Restart the backend so connector state changes from <code>not_configured</code> to enabled.</li>
+          <li>Run the trigger smoke test and confirm the run appears in workflow history.</li>
+        </ul>
+      </section>
+      <section class="panel">
+        <h2>Still Building</h2>
+        <ul>
+          <li>Shuffle adapter and SOC-native workflow template pack.</li>
+          <li>Approval queue with approve/reject controls for destructive actions.</li>
+          <li>Outbound request signing, retry/backoff, and dead-letter tracking.</li>
+          <li>Case timeline integration for queued, running, success, and failed automation steps.</li>
+        </ul>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

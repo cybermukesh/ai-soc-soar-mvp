@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
+from app.api.automation import ensure_automation_connectors, router as automation_router
 from app.api.auth import current_user, require_role, router as auth_router
 from app.api.connectors import router as connectors_router
 from app.api.incidents import router as incidents_router
@@ -207,6 +208,7 @@ def startup() -> None:
     try:
         ensure_admin_seed(db)
         _seed_platform_settings(db)
+        ensure_automation_connectors(db)
     finally:
         db.close()
 
@@ -215,6 +217,7 @@ app.include_router(auth_router)
 app.include_router(connectors_router)
 app.include_router(incidents_router)
 app.include_router(settings_router)
+app.include_router(automation_router)
 
 
 def _mask_secret(value: str) -> str:

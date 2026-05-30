@@ -279,6 +279,24 @@ h3 {
   font-size: 13px;
 }
 
+.identity-stack {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+  max-width: min(620px, 50vw);
+}
+
+.role-caption {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  color: #475467;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: right;
+}
+
 .state-pill {
   padding: 2px 8px;
   font-size: 11px;
@@ -344,6 +362,64 @@ h3 {
 .admin-form {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.filter-bar,
+.automation-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(120px, 0.7fr)) auto auto;
+  gap: 8px;
+  align-items: center;
+  margin: 10px 0 14px;
+}
+
+.automation-grid {
+  grid-template-columns: repeat(4, minmax(140px, 1fr)) auto;
+}
+
+.filter-bar label {
+  min-width: 0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0 10px;
+  color: #667085;
+}
+
+.filter-bar input,
+.filter-bar select,
+.automation-grid input,
+.automation-grid select {
+  height: 36px;
+  min-width: 0;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #101828;
+  padding: 0 10px;
+}
+
+.filter-bar label input {
+  flex: 1;
+  height: auto;
+  border: 0;
+  padding: 0;
+  outline: 0;
+}
+
+.filter-bar > span {
+  color: #667085;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.compact-control {
+  grid-template-columns: minmax(220px, 360px) auto;
 }
 
 .metric,
@@ -807,6 +883,11 @@ h3 {
   padding: 12px;
 }
 
+.alert-row:hover {
+  border-color: #98a2b3;
+  background: #ffffff;
+}
+
 .alert-row span {
   color: #344054;
   font-size: 13px;
@@ -850,6 +931,15 @@ h3 {
 
 .detail-panel {
   margin-top: 16px;
+}
+
+.empty-state {
+  min-width: 0;
+  border: 1px dashed #98a2b3;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #475467;
+  padding: 12px;
 }
 
 .raw-event pre {
@@ -931,6 +1021,16 @@ h3 {
   gap: 8px;
 }
 
+.closure-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.soar-console {
+  border-left: 3px solid #0f766e;
+}
+
 .column-warning {
   border-top: 3px solid #f59e0b;
 }
@@ -961,7 +1061,10 @@ h3 {
   .connector-grid,
   .detail-grid,
   .ingestion-strip,
-  .triage-score-grid {
+  .triage-score-grid,
+  .filter-bar,
+  .automation-grid,
+  .closure-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1028,6 +1131,16 @@ h3 {
     flex-direction: column;
   }
 
+  .identity-stack {
+    justify-items: start;
+    max-width: 100%;
+  }
+
+  .role-caption {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
   h1 {
     font-size: 24px;
   }
@@ -1047,7 +1160,10 @@ h3 {
   .table-head,
   .alert-row,
   .chart-row,
-  .flow-chart {
+  .flow-chart,
+  .filter-bar,
+  .automation-grid,
+  .closure-grid {
     grid-template-columns: 1fr;
   }
 

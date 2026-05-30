@@ -153,38 +153,51 @@ It is intentionally detailed and operational (not pitch-level).
 - [ ] explicit severity/risk chips in incident rows
 - [ ] timeline panel grouping by event_type
 
-## Day 5 (Planned) - Grouping + Noise Reduction Metrics
+## Day 5 (In Progress) - Grouping + Noise Reduction Metrics
 
 ### Incident Grouping Logic
-- [ ] grouping key strategy (asset+rule+window+src)
+- [x] grouping key strategy (asset+rule+window+src) exposed in triage output
+- [x] alert queue filters in frontend triage workbench
+- [x] case lifecycle subsections for board, intake, timeline, and closure
 - [ ] dedupe window and merge policy
 - [ ] promotion rule from repeated suspicious alerts to incident
 
 ### Noise Reduction Metrics
-- [ ] baseline raw alert count
-- [ ] suppressed/merged/retriaged counters
-- [ ] before/after dashboard section for judge evidence
+- [x] baseline raw alert count available from noise-reduction endpoint
+- [x] suppressed/grouped/analyst-item counters available from triage noise endpoint
+- [x] before/after dashboard section for judge evidence
+- [x] executive dashboard charts for severity split, incident status, and seven-day triage trend
+- [ ] persisted metric snapshots for 7 days, 15 days, 30 days, and 1 year
 
 ### Analyst Feedback Loop
 - [ ] false-positive feedback endpoint
 - [ ] feedback to triage cache override
 - [ ] explainability log for why grouped/suppressed
 
-## Day 6 (Planned) - SOAR Execution Controls
+## Day 6 (In Progress) - SOAR Execution Controls
 
 ### SOAR Integration
-- [ ] workflow dispatch service (n8n/Shuffle selectable)
+- [x] workflow dispatch service foundation for n8n webhook template
+- [x] automation connector state persisted and seeded from `N8N_WEBHOOK_URL`
+- [x] workflow template listing API
+- [x] workflow run listing API
+- [x] bounded test trigger API with RBAC and audit logging
 - [ ] outbound request signing/secret handling
-- [ ] execution logs persisted
+- [x] execution logs persisted for n8n webhook attempts
+- [ ] Shuffle adapter and workflow template set
 
 ### Human-in-the-Loop Controls
-- [ ] approval gate for high-impact actions
+- [x] frontend marks containment workflow as non-dry-run and captures approval note
+- [ ] backend approval gate for high-impact actions
 - [ ] per-severity auto/approval policy
 - [ ] retry/backoff + dead-letter tracking
 
 ### UI
-- [ ] runbook action panel in incident detail
+- [x] SOAR automation request console in the analyst dashboard
+- [x] case and alert selectors for action context
+- [x] role-aware automation request blocking for viewer users
 - [ ] execution status timeline (queued/running/success/fail)
+- [ ] approval queue with approve/reject buttons
 
 ## Day 7 (Planned) - Demo Readiness + Security Hardening
 
@@ -207,8 +220,9 @@ It is intentionally detailed and operational (not pitch-level).
 - [x] OpenSearch health probe returns cluster state
 - [x] recent alerts endpoint returns normalized records
 - [x] connectors and incidents visible in UI
-- [ ] full SOAR execution path tested with webhook targets
-- [ ] Day 5 metrics visible in dashboard
+- [x] automation template and connector APIs smoke-tested
+- [x] Day 5 metrics visible in dashboard
+- [ ] full SOAR execution path tested with real n8n webhook target
 
 ## 4) Command Memory (Runbook)
 
@@ -237,4 +251,6 @@ curl -s -H "Authorization: Bearer $APP_TOKEN" 'http://localhost:8000/api/v1/conn
 curl -s -H "Authorization: Bearer $APP_TOKEN" 'http://localhost:8000/alerts/wazuh/recent?limit=3'
 curl -s -X POST -H "Authorization: Bearer $APP_TOKEN" 'http://localhost:8000/api/v1/ingestion/wazuh/sync?limit=5&triage=true'
 curl -s -H "Authorization: Bearer $APP_TOKEN" 'http://localhost:8000/api/v1/ingestion/status'
+curl -s -H "Authorization: Bearer $APP_TOKEN" 'http://localhost:8000/api/v1/automation/workflow-templates'
+curl -s -H "Authorization: Bearer $APP_TOKEN" 'http://localhost:8000/api/v1/automation/connectors'
 ```

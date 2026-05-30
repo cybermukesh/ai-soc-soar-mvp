@@ -11,8 +11,10 @@ Convert noisy SIEM alerts into prioritized, explainable incidents and trigger an
 - Day 1: Complete - market strategy, pain-point research, competitor scan, and MVP narrowing.
 - Day 2: Complete - product plan plus backend foundation (DB/session, auth, JWT, RBAC, admin APIs, audit logs).
 - Day 3: Complete - connector layer with persisted configs, health checks, encrypted secret path, connector history/audit, and live Wazuh/OpenSearch probe validation.
-- Day 4: In progress - triage + incident core depth (workflow quality, timeline depth, grouping quality).
-- Day 5: Planned - incident grouping logic, timeline UX depth, and reduction metrics.
+- Day 4: In progress - AI triage depth, analyst feedback, incident lifecycle, AI model settings, and threat-intel provider control plane.
+- Day 5: In progress - alert queue filters, case lifecycle sections, executive metrics, and measurable noise-reduction evidence.
+- Day 6: In progress - n8n SOAR connector state, workflow template API, trigger API, persisted workflow run logs, and frontend request console.
+- Day 7: Planned - demo hardening, security review, CI/CD polish, and judge-ready evidence.
 
 ## Core Flow
 
@@ -65,7 +67,19 @@ flowchart LR
 - Core logic consumes normalized alerts so Splunk, Sentinel, Elastic, QRadar, or EDR sources can be added later.
 - AI triage returns structured JSON with verdict, confidence, evidence, risk score, and recommended actions.
 - Repeated alerts should use cached triage to reduce token usage.
-- SOAR actions are approval-gated in the MVP and recorded in an audit trail.
+- Current SOAR foundation records workflow runs and audit events. High-impact approval gates are the next backend control before destructive response actions.
+
+## Cyber Authorization Boundaries
+
+This project is defensive SOC tooling. The following activities require explicit owner approval before use on a live environment:
+
+- Connecting to a production SIEM, Wazuh manager, OpenSearch cluster, or EDR source.
+- Pulling, storing, exporting, or sharing real security logs and alert evidence.
+- Sending client IOCs, hostnames, usernames, hashes, URLs, or IPs to external threat-intel or LLM providers.
+- Triggering SOAR actions that change systems, such as blocking IPs, disabling users, isolating hosts, deleting files, or changing firewall rules.
+- Running automation against third-party tools such as Jira, Slack, email, ticketing queues, n8n, Shuffle, or cloud APIs.
+
+The default MVP design keeps dangerous actions behind RBAC, audit logs, masked secrets, and planned human approval gates.
 
 ## Repository Layout
 

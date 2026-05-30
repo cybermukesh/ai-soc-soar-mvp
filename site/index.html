@@ -27,12 +27,12 @@
         <p class="kicker">Startup Build Journal</p>
         <h1>AI SOC SOAR Automation Layer</h1>
         <p>Wazuh-first, SIEM-agnostic SOC automation platform with authenticated APIs, RBAC, connector observability, AI triage, incident lifecycle, AI provider controls, and threat-intel readiness.</p>
-        <span class="status progress">Status: Day 1-3 Completed | Day 4 In Progress with triage, case lifecycle, AI settings, and alert flood controls | Day 5-7 Planned</span>
+        <span class="status progress">Status: Day 1-3 Completed | Day 4-6 In Progress with AI triage, case lifecycle, metrics, and n8n SOAR foundation | Day 7 Planned</span>
       </section>
 
       <section class="grid">
         <article class="metric"><h3>Completed</h3><p>Day 3 includes live Wazuh/OpenSearch probes, auditable ingestion sync, persistence, and triage handoff.</p></article>
-        <article class="metric"><h3>In Progress</h3><p>Day 4 includes L2 triage depth, review history, priority, SLA, escalation, resolution fields, AI settings, and threat-intel provider setup.</p></article>
+        <article class="metric"><h3>In Progress</h3><p>Day 4-6 include L2 triage depth, case lifecycle, alert filtering, executive metrics, and first n8n webhook workflow dispatch.</p></article>
         <article class="metric"><h3>Core Stack</h3><p>FastAPI, SQLite (Postgres-ready), React/Vite, Wazuh/OpenSearch, Shuffle-first SOAR plan with n8n optional.</p></article>
         <article class="metric"><h3>Governance</h3><p>Clean-room policy, audit logging, RBAC controls, masked secrets, connector status history.</p></article>
       </section>
@@ -45,7 +45,7 @@
           <li>Normalized alert schema and low-token AI triage engine with cache strategy.</li>
           <li>Signal/noise scoring, duplicate grouping, suppression reason, and analyst queue routing.</li>
           <li>Incident lifecycle with timeline events and analyst action controls.</li>
-          <li>SOAR dispatch layer planned for Shuffle with approval gates; n8n remains optional.</li>
+          <li>SOAR dispatch foundation added for n8n test webhooks with persisted run logs; Shuffle adapter and approval gates remain next.</li>
           <li>React dashboard for operators, admin controls, AI provider settings, and visibility metrics.</li>
         </ul>
       </section>
@@ -56,8 +56,8 @@
           <li>Day 2: Completed - architecture + auth/RBAC/admin/audit foundation.</li>
           <li>Day 3: Completed - connector robustness, live Wazuh/OpenSearch checks, ingestion sync, persistence, triage handoff, and run audit.</li>
           <li>Day 4: In Progress - AI triage depth, analyst feedback, case lifecycle, AI provider settings, threat-intel settings, priority, SLA, escalation, and resolution tracking.</li>
-          <li>Day 5: Planned - persisted grouping, enrichment cache, ticket workflow, and measurable noise-reduction metrics.</li>
-          <li>Day 6: Planned - SOAR workflow integration with approval controls.</li>
+          <li>Day 5: In Progress - alert queue filters, case workflow sections, dashboard charts, grouping evidence, and measurable noise-reduction metrics.</li>
+          <li>Day 6: In Progress - SOAR workflow template, n8n connector state, trigger API, persisted workflow logs, and analyst request console.</li>
           <li>Day 7: Planned - demo polish, security checks, and judge metrics.</li>
         </ul>
       </section>
@@ -82,8 +82,8 @@
           <div class="dayrow"><span>Day 2 - Product architecture and auth/RBAC foundation (Completed)</span><a href="day-2.html">Open</a></div>
           <div class="dayrow"><span>Day 3 - Connector persistence, live ingestion sync, audit history (Completed)</span><a href="day-3.html">Open</a></div>
           <div class="dayrow"><span>Day 4 - AI triage depth, settings, and SOC case lifecycle (In Progress)</span><a href="day-4.html">Open</a></div>
-          <div class="dayrow"><span>Day 5 - Incident grouping, threat intel, metrics, and workflow depth (Planned)</span><a href="day-5.html">Open</a></div>
-          <div class="dayrow"><span>Day 6 - SOAR execution controls and analyst flow (Planned)</span><a href="day-6.html">Open</a></div>
+          <div class="dayrow"><span>Day 5 - Incident grouping, threat intel, metrics, and workflow depth (In Progress)</span><a href="day-5.html">Open</a></div>
+          <div class="dayrow"><span>Day 6 - SOAR execution controls and analyst flow (In Progress)</span><a href="day-6.html">Open</a></div>
           <div class="dayrow"><span>Day 7 - Demo readiness, quality, and pitch evidence (Planned)</span><a href="day-7.html">Open</a></div>
         </div>
       </section>

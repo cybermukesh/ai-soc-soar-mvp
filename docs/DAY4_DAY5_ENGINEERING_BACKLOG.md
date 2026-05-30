@@ -56,12 +56,12 @@ Acceptance:
 
 ### 4.3 Bring-Your-Own AI Configuration
 
-- [ ] Persist AI provider settings in DB.
-- [ ] Support OpenAI, Anthropic, Ollama, and disabled/offline heuristic mode.
-- [ ] Store provider API keys as encrypted secrets with masked display.
-- [ ] Add provider health/status check.
-- [ ] Add model limits: max input chars, max output tokens, min severity, cache enabled, stronger-model fallback.
-- [ ] Add UI settings page for AI model configuration.
+- [x] Persist AI provider settings in DB.
+- [x] Support OpenAI, Anthropic, Ollama, and disabled/offline heuristic mode.
+- [x] Store provider API keys as encrypted secrets with masked display.
+- [x] Add provider health/status check.
+- [x] Add model limits: max input chars, max output tokens, min severity, cache enabled, stronger-model fallback.
+- [x] Add UI settings page for AI model configuration.
 - [ ] Make triage service read active settings from DB with env fallback.
 
 Acceptance:
@@ -74,10 +74,10 @@ Acceptance:
 
 ### 5.1 Threat Intelligence Enrichment
 
-- [ ] Persist threat intel provider settings.
-- [ ] Support VirusTotal, AbuseIPDB, OTX, MISP, and local IOC list.
-- [ ] Store API keys encrypted and masked.
-- [ ] Add provider health checks.
+- [x] Persist threat intel provider settings.
+- [x] Support VirusTotal, AbuseIPDB, OTX, MISP, and local IOC list.
+- [x] Store API keys encrypted and masked.
+- [x] Add provider health checks.
 - [ ] Add IOC extraction from alert fields: IP, domain, hash, URL, username, host.
 - [ ] Add enrichment cache with TTL to prevent API overuse.
 - [ ] Show enrichment result in AI triage detail and case detail.
@@ -90,8 +90,8 @@ Acceptance:
 ### 5.2 Wazuh/Kibana-Style Analyst Views
 
 - [ ] Add full alert table with column controls.
-- [ ] Add search and filter bar.
-- [ ] Add severity, verdict, queue, source, MITRE, and time filters.
+- [x] Add search and filter bar.
+- [x] Add severity, verdict, queue, source, MITRE, and time filters.
 - [ ] Add expandable raw JSON drawer.
 - [ ] Add export for visible alert rows.
 - [ ] Add saved views for common SOC filters.
@@ -110,7 +110,7 @@ Acceptance:
 - [ ] Add linked alerts and linked IOC records.
 - [ ] Add SLA timers and breach state.
 - [ ] Add workflow stages: New, Triage, Investigation, Containment, Eradication, Recovery, Closed.
-- [ ] Add ticket bridge payload for Shuffle/n8n/webhook automation.
+- [x] Add ticket bridge payload for n8n webhook automation foundation.
 - [ ] Add executive summary generation for closed cases.
 - [ ] Add case analytics for 7 days, 15 days, 30 days, and 1 year.
 
@@ -123,10 +123,12 @@ Acceptance:
 ### 5.4 SOAR and Workflow Automation
 
 - [ ] Prefer Shuffle for SOC-native workflow orchestration, keep n8n optional for broad integration use cases.
-- [ ] Add outbound webhook settings for Shuffle/n8n.
+- [x] Add outbound webhook setting for n8n.
+- [x] Add first workflow template: n8n test webhook with case/alert context.
+- [ ] Add Shuffle connector settings.
 - [ ] Add workflow templates: notify Slack, create ticket, disable account, block IP, isolate host, request approval.
 - [ ] Add approval gate before destructive actions.
-- [ ] Add action log with request payload, response, actor, status, and timestamp.
+- [x] Add action log with request payload summary, response, actor, status, and timestamp.
 
 Acceptance:
 

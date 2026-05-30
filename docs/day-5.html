@@ -1,1 +1,64 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Day 5</title><link rel="stylesheet" href="style.css"></head><body><div class="layout"><aside class="sidebar"><div class="brand">AI SOC SOAR MVP</div><div class="sub">GitBook-style judge docs</div><nav class="menu"><a href="index.html">Overview</a><a href="day-1.html">Day 1</a><a href="day-2.html">Day 2</a><a href="day-3.html">Day 3</a><a href="day-4.html">Day 4</a><a class="active" href="day-5.html">Day 5</a><a href="day-6.html">Day 6</a><a href="day-7.html">Day 7</a></nav></aside><main class="content"><section class="hero"><p class="kicker">Day 5</p><h1>Incident Grouping and Metrics</h1><span class="status progress">In Progress</span><p>Current sprint focuses on grouping related alerts into incidents and producing measurable noise-reduction metrics.</p></section><section class="panel"><h2>In Progress</h2><ul><li>Grouping strategy: entity + rule + time-window correlation.</li><li>Incident-level metric rollups for duplicate suppression and risk trend.</li><li>Timeline UX depth for analyst context.</li></ul></section><section class="panel"><h2>Pre-Wazuh/n8n Readiness Added</h2><ul><li><code>GET /api/v1/readiness/env</code> for required env checks.</li><li><code>GET /api/v1/connectors/setup/summary</code> for required connector fields.</li><li>Manual setup checklist added in docs: <code>docs/WAZUH_N8N_SETUP_CHECKLIST.md</code>.</li></ul></section><section class="panel"><h2>Next</h2><ul><li>Expose grouping scores and confidence in API.</li><li>Add before/after reduction metrics for pitch evidence.</li></ul></section></main></div></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Day 5 - Grouping and Metrics</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">AI SOC SOAR MVP</div>
+      <div class="sub">GitBook-style judge docs</div>
+      <nav class="menu">
+        <a href="index.html">Overview</a>
+        <a href="day-1.html">Day 1</a>
+        <a href="day-2.html">Day 2</a>
+        <a href="day-3.html">Day 3</a>
+        <a href="day-4.html">Day 4</a>
+        <a class="active" href="day-5.html">Day 5</a>
+        <a href="day-6.html">Day 6</a>
+        <a href="day-7.html">Day 7</a>
+      </nav>
+    </aside>
+    <main class="content">
+      <section class="hero">
+        <p class="kicker">Day 5</p>
+        <h1>Incident Grouping and Noise Metrics</h1>
+        <span class="status progress">In Progress</span>
+        <p>Day 5 is building the analyst evidence layer around grouped alerts, reduced noise, lifecycle views, and executive-friendly SOC metrics.</p>
+      </section>
+      <section class="panel">
+        <h2>Completed This Sprint</h2>
+        <ul>
+          <li>Alert queue filters added for search, severity, verdict, and analyst queue.</li>
+          <li>Case lifecycle split into board, intake, timeline, and closure sections.</li>
+          <li>Executive dashboard charts added for severity distribution, incident status, and seven-day triage trend.</li>
+          <li>Noise-reduction endpoint already exposes raw alert count, grouped duplicates, suppressed noise, analyst items, and reduction percentage.</li>
+          <li>Current triage logic returns correlation key, correlation count, related alert count, entity frequency, suppression decision, and suppression reason.</li>
+        </ul>
+      </section>
+      <section class="panel">
+        <h2>Still Building</h2>
+        <ul>
+          <li>Persisted correlation group table with representative alert and grouped alert IDs.</li>
+          <li>Promotion rule from repeated high-signal groups into incidents.</li>
+          <li>Threat-intel IOC lookup cache and triage detail enrichment.</li>
+          <li>Long-range metrics snapshots for 7 days, 15 days, 30 days, and 1 year.</li>
+          <li>Analyst feedback override that influences duplicate triage decisions.</li>
+        </ul>
+      </section>
+      <section class="panel">
+        <h2>Evidence Endpoints</h2>
+        <ul>
+          <li><code>GET /triage/noise-reduction</code></li>
+          <li><code>GET /api/v1/alerts?limit=25&amp;offset=0</code></li>
+          <li><code>GET /api/v1/incidents</code></li>
+          <li><code>GET /api/v1/incidents/{id}/events</code></li>
+        </ul>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

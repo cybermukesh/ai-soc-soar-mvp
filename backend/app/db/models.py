@@ -64,6 +64,36 @@ class ConnectorHealthCheck(Base):
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class AutomationConnector(Base):
+    __tablename__ = "automation_connectors"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    connector_type: Mapped[str] = mapped_column(String(40), index=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    webhook_url_masked: Mapped[str] = mapped_column(String(120), default="")
+    last_status: Mapped[str] = mapped_column(String(40), default="unknown")
+    last_error: Mapped[str] = mapped_column(String(300), default="")
+    updated_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class AutomationWorkflowRun(Base):
+    __tablename__ = "automation_workflow_runs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    template_id: Mapped[str] = mapped_column(String(80), index=True)
+    template_name: Mapped[str] = mapped_column(String(120))
+    connector_name: Mapped[str] = mapped_column(String(40), index=True)
+    status: Mapped[str] = mapped_column(String(30), default="pending", index=True)
+    incident_id: Mapped[str] = mapped_column(String(80), default="", index=True)
+    alert_id: Mapped[str] = mapped_column(String(120), default="", index=True)
+    request_summary: Mapped[str] = mapped_column(String(500), default="")
+    response_detail: Mapped[str] = mapped_column(String(500), default="")
+    triggered_by_user_id: Mapped[int] = mapped_column(index=True)
+    created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    completed_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class AiProviderSetting(Base):
     __tablename__ = "ai_provider_settings"
     id: Mapped[int] = mapped_column(primary_key=True)

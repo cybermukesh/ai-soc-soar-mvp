@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_exp_minutes: int = 60 * 8
     db_url: str = f"sqlite:///{DEFAULT_DB}"
+    n8n_webhook_url: str = ""
+    shuffle_webhook_url: str = ""
+    slack_webhook_url: str = ""
 
     model_config = SettingsConfigDict(env_file=str(ENV_FILE), extra="ignore")
 

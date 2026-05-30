@@ -1,5 +1,5 @@
 import React from "react";
-import { Activity, BarChart3, Bot, ClipboardList, Plug, Settings, ShieldAlert, Users, Workflow } from "lucide-react";
+import { BarChart3, Bot, ClipboardList, LockKeyhole, Play, Plug, Search, Settings, ShieldAlert, Users, Workflow } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles/app.css";
 
@@ -59,6 +59,9 @@ type TriageHistory = { alert_id: string; decision: TriageDecision | null; dispos
 type NoiseSummary = { total_alerts: number; suppressed_noise: number; grouped_duplicates: number; escalated_signals: number; review_items: number; estimated_analyst_items: number; estimated_noise_reduction_percent: number; strategy: string };
 type AiProvider = { id: number; provider: string; model: string; api_key_masked: string; base_url: string; enabled: boolean; cache_enabled: boolean; max_input_chars: number; max_output_tokens: number; min_severity: string; fallback_model: string; last_status: string; last_error: string; updated_at: string };
 type ThreatIntelProvider = { id: number; provider: string; api_key_masked: string; base_url: string; enabled: boolean; daily_limit: number; cache_ttl_minutes: number; last_status: string; last_error: string; updated_at: string };
+type AutomationConnector = { id: number; name: string; connector_type: string; enabled: boolean; webhook_url_masked: string; last_status: string; last_error: string; updated_at: string };
+type WorkflowTemplate = { id: string; name: string; description: string; connector_name: string; action: string; enabled: boolean };
+type WorkflowRun = { id: number; template_id: string; template_name: string; connector_name: string; status: string; incident_id: string; alert_id: string; request_summary: string; response_detail: string; triggered_by_user_id: number; created_at: string; completed_at: string };
 
 const verdictClass: Record<TriageDecision["verdict"], string> = {
   false_positive: "sev-low",
@@ -109,6 +112,13 @@ function App() {
   const [settingsSection, setSettingsSection] = React.useState<"ai" | "intel" | "status">("ai");
   const [adminSection, setAdminSection] = React.useState<"users" | "approvals" | "audit" | "health">("users");
   const [triageSection, setTriageSection] = React.useState<"queue" | "detail" | "history">("queue");
+  const [caseSection, setCaseSection] = React.useState<"board" | "intake" | "timeline" | "closure">("board");
+  const [alertFilter, setAlertFilter] = React.useState({ q: "", severity: "", queue: "", verdict: "" });
+  const [automationMsg, setAutomationMsg] = React.useState("");
+  const [automationForm, setAutomationForm] = React.useState({ workflow: "notify", case_id: "", alert_id: "", approval_note: "" });
+  const [automationConnectors, setAutomationConnectors] = React.useState<AutomationConnector[]>([]);
+  const [workflowTemplates, setWorkflowTemplates] = React.useState<WorkflowTemplate[]>([]);
+  const [workflowRuns, setWorkflowRuns] = React.useState<WorkflowRun[]>([]);
   const [aiForm, setAiForm] = React.useState({ provider: "openai", model: "gpt-4o-mini", api_key: "", base_url: "", enabled: true, cache_enabled: true, max_input_chars: 6000, max_output_tokens: 700, min_severity: "medium", fallback_model: "" });
   const [intelForm, setIntelForm] = React.useState({ provider: "virustotal", api_key: "", base_url: "", enabled: false, daily_limit: 500, cache_ttl_minutes: 1440 });
   const healthyConnectors = connectors.filter((c) => c.last_status === "ok").length;
@@ -125,6 +135,32 @@ function App() {
     severity,
     count: alerts.filter((alert) => alert.severity === severity).length,
   }));
+  const roleCopy = {
+    admin: { label: "Admin", detail: "Full platform owner: users, secrets, settings, audit, case and automation approval." },
+    analyst: { label: "Analyst", detail: "Operational user: sync, triage, feedback, cases, timeline notes, and approval-gated SOAR requests." },
+    viewer: { label: "Viewer", detail: "Read-only user: dashboards, alerts, cases, connectors, and provider status without write actions." },
+  }[user?.role || "viewer"];
+  const alertById = React.useMemo(() => new Map(alerts.map((alert) => [alert.alert_id, alert])), [alerts]);
+  const filteredDecisions = decisions.filter((decision) => {
+    const alert = alertById.get(decision.alert_id);
+    const haystack = [
+      decision.alert_id,
+      decision.attack_summary,
+      decision.queue,
+      decision.soar_recommendation,
+      alert?.rule.name,
+      alert?.asset.hostname,
+      alert?.network.src_ip,
+      alert?.user.name,
+    ].join(" ").toLowerCase();
+    if (alertFilter.q && !haystack.includes(alertFilter.q.toLowerCase())) return false;
+    if (alertFilter.severity && alert?.severity !== alertFilter.severity) return false;
+    if (alertFilter.queue && (decision.queue || decision.soar_recommendation || "review") !== alertFilter.queue) return false;
+    if (alertFilter.verdict && decision.verdict !== alertFilter.verdict) return false;
+    return true;
+  });
+  const alertQueues = Array.from(new Set(decisions.map((decision) => decision.queue || decision.soar_recommendation || "review"))).filter(Boolean);
+  const selectedIncident = incidents.find((incident) => incident.id === incidentSelectedId) || null;
   const incidentColumns = [
     { label: "New", phases: ["new"], tone: "neutral" },
     { label: "Triage", phases: ["triage"], tone: "warning" },
@@ -209,6 +245,22 @@ function App() {
       .then((data) => setIntelProviders(Array.isArray(data) ? data : []))
       .catch(() => setIntelProviders([]));
   }, [token, settingsMsg]);
+
+  React.useEffect(() => {
+    if (!token) return;
+    fetch(`${API}/api/v1/automation/connectors`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => setAutomationConnectors(Array.isArray(data) ? data : []))
+      .catch(() => setAutomationConnectors([]));
+    fetch(`${API}/api/v1/automation/workflow-templates`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => setWorkflowTemplates(Array.isArray(data) ? data : []))
+      .catch(() => setWorkflowTemplates([]));
+    fetch(`${API}/api/v1/automation/workflow-runs`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => setWorkflowRuns(Array.isArray(data) ? data : []))
+      .catch(() => setWorkflowRuns([]));
+  }, [token, automationMsg]);
 
   React.useEffect(() => {
     if (!token) return;
@@ -398,6 +450,43 @@ function App() {
     }
   }
 
+  async function requestAutomationRun() {
+    setAutomationMsg("");
+    if (user.role === "viewer") {
+      setAutomationMsg("Viewer access is read-only. Ask an analyst or admin to request automation.");
+      return;
+    }
+    if (!automationForm.case_id && !automationForm.alert_id) {
+      setAutomationMsg("Select or enter a case id or alert id before requesting automation.");
+      return;
+    }
+    const payload = {
+      incident_id: automationForm.case_id,
+      alert_id: automationForm.alert_id,
+      dry_run: automationForm.workflow !== "containment_approval",
+      payload: {
+        requested_workflow: automationForm.workflow,
+        approval_note: automationForm.approval_note,
+        requested_by_role: user.role,
+      },
+    };
+    try {
+      const res = await fetch(`${API}/api/v1/automation/workflow-templates/n8n-test-webhook/trigger`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setAutomationMsg(`Automation request failed: ${data.detail || res.statusText || "backend rejected request"}`);
+        return;
+      }
+      setAutomationMsg(`Automation run #${data.id} ${data.status}: ${data.response_detail || "submitted to n8n webhook"}`);
+    } catch {
+      setAutomationMsg("Automation backend is not reachable. Confirm the API service is running on port 8000.");
+    }
+  }
+
   async function login() {
     setLoading(true);
     setError("");
@@ -520,7 +609,10 @@ function App() {
       <section className="workspace">
         <header className="topbar">
           <div><p className="eyebrow">Authenticated Session</p><h1>AI SOC SOAR Command Center</h1></div>
-          <span className="status-pill">{user.full_name} - {user.role}</span>
+          <div className="identity-stack">
+            <span className="status-pill">{user.full_name} - {roleCopy.label}</span>
+            <span className="role-caption"><LockKeyhole size={13} /> {roleCopy.detail}</span>
+          </div>
         </header>
 
         {tab === "overview" ? (
@@ -730,9 +822,27 @@ function App() {
               <button className={triageSection === "history" ? "active" : ""} onClick={() => setTriageSection("history")}>Review History</button>
             </div>
             {triageSection === "queue" ? (
+              <>
+              <div className="filter-bar">
+                <label><Search size={14} /><input placeholder="Search alert, host, IP, summary" value={alertFilter.q} onChange={(e) => setAlertFilter({ ...alertFilter, q: e.target.value })} /></label>
+                <select value={alertFilter.severity} onChange={(e) => setAlertFilter({ ...alertFilter, severity: e.target.value })}>
+                  <option value="">all severity</option>
+                  <option value="critical">critical</option><option value="high">high</option><option value="medium">medium</option><option value="low">low</option>
+                </select>
+                <select value={alertFilter.verdict} onChange={(e) => setAlertFilter({ ...alertFilter, verdict: e.target.value })}>
+                  <option value="">all verdicts</option>
+                  <option value="true_positive">true positive</option><option value="suspicious">suspicious</option><option value="needs_review">needs review</option><option value="low_priority">low priority</option><option value="false_positive">false positive</option>
+                </select>
+                <select value={alertFilter.queue} onChange={(e) => setAlertFilter({ ...alertFilter, queue: e.target.value })}>
+                  <option value="">all queues</option>
+                  {alertQueues.map((queue) => <option value={queue} key={queue}>{queue}</option>)}
+                </select>
+                <button className="secondary-button" onClick={() => setAlertFilter({ q: "", severity: "", queue: "", verdict: "" })}>Clear</button>
+                <span>{filteredDecisions.length}/{decisions.length} shown</span>
+              </div>
 	            <div className="alert-table">
 	              <div className="table-head"><span>Alert</span><span>Verdict</span><span>Signal</span><span>Noise</span><span>Queue</span></div>
-	              {decisions.map((d, index) => (
+	              {filteredDecisions.map((d, index) => (
 	                <article className="alert-row" key={`${d.alert_id}-${index}`} onClick={() => { setSelectedAlertId(d.alert_id); setTriageSection("detail"); }}>
 	                  <span><strong>{d.alert_id}</strong>{d.attack_summary}</span>
 	                  <span className={`severity ${verdictClass[d.verdict]}`}>{d.verdict}</span>
@@ -741,7 +851,9 @@ function App() {
 	                  <span>{d.queue || d.soar_recommendation}{d.from_cache ? " (cache)" : ""}</span>
 	                </article>
 	              ))}
+                {filteredDecisions.length === 0 ? <article className="empty-state">No alerts match the current filters.</article> : null}
 	            </div>
+              </>
             ) : null}
             {triageSection === "detail" && selectedAlertId ? (
               <section className="panel detail-panel">
@@ -830,7 +942,13 @@ function App() {
               <div><h2>Case Management Board</h2><p>Jira-style SOC lifecycle from new alert to closure, with owner, ticket, and timeline.</p></div>
               <span className="status-pill">{openIncidents} active</span>
             </div>
-            {(user.role === "admin" || user.role === "analyst") ? (
+            <div className="subnav">
+              <button className={caseSection === "board" ? "active" : ""} onClick={() => setCaseSection("board")}>Lifecycle Board</button>
+              <button className={caseSection === "intake" ? "active" : ""} onClick={() => setCaseSection("intake")}>Intake</button>
+              <button className={caseSection === "timeline" ? "active" : ""} onClick={() => setCaseSection("timeline")}>Timeline</button>
+              <button className={caseSection === "closure" ? "active" : ""} onClick={() => setCaseSection("closure")}>Closure</button>
+            </div>
+            {caseSection === "intake" && (user.role === "admin" || user.role === "analyst") ? (
               <div className="admin-form">
                 <input placeholder="Title" value={incidentForm.title} onChange={(e) => setIncidentForm({ ...incidentForm, title: e.target.value })} />
                 <select value={incidentForm.severity} onChange={(e) => setIncidentForm({ ...incidentForm, severity: e.target.value })}>
@@ -855,6 +973,9 @@ function App() {
                 <button onClick={createIncident}>Create incident</button>
               </div>
             ) : null}
+            {caseSection === "intake" && user.role === "viewer" ? <article className="empty-state">Viewer role can inspect cases but cannot create or update them.</article> : null}
+            {caseSection === "board" ? (
+              <>
             <div className="admin-form">
               <input placeholder="Search title" value={incidentFilter.q} onChange={(e) => setIncidentFilter({ ...incidentFilter, q: e.target.value })} />
               <select value={incidentFilter.status} onChange={(e) => setIncidentFilter({ ...incidentFilter, status: e.target.value })}>
@@ -892,9 +1013,18 @@ function App() {
                 </section>
               ))}
             </div>
-            {incidentSelectedId ? (
+              </>
+            ) : null}
+            {caseSection === "timeline" ? (
               <>
-                <h3>Incident Timeline #{incidentSelectedId}</h3>
+                <div className="filter-bar compact-control">
+                  <select value={incidentSelectedId || ""} onChange={(e) => e.target.value ? loadIncidentEvents(Number(e.target.value)) : setIncidentSelectedId(null)}>
+                    <option value="">select case timeline</option>
+                    {incidents.map((incident) => <option key={incident.id} value={incident.id}>#{incident.id} {incident.title}</option>)}
+                  </select>
+                  {selectedIncident ? <span>{selectedIncident.status} / {selectedIncident.phase || "new"}</span> : null}
+                </div>
+                <h3>Incident Timeline {incidentSelectedId ? `#${incidentSelectedId}` : ""}</h3>
                 {(user.role === "admin" || user.role === "analyst") ? (
                   <div className="admin-form">
                     <select value={incidentEventForm.event_type} onChange={(e) => setIncidentEventForm({ ...incidentEventForm, event_type: e.target.value })}>
@@ -913,6 +1043,25 @@ function App() {
                 </div>
               </>
             ) : null}
+            {caseSection === "closure" ? (
+              <section className="panel detail-panel">
+                <div className="section-title">
+                  <div><h3>Closure Readiness</h3><p>Uses the current case records only: status, phase, close reason, resolution summary, and escalation state.</p></div>
+                  <span className="status-pill">{resolvedIncidents} closed/resolved</span>
+                </div>
+                <div className="closure-grid">
+                  {incidents.map((incident) => (
+                    <article className="case-card" key={`closure-${incident.id}`}>
+                      <strong>#{incident.id} {incident.title}</strong>
+                      <span>{incident.status} | phase {incident.phase || "new"} | {incident.priority || "P3"} | {incident.escalated ? "escalated" : "not escalated"}</span>
+                      <p>Close reason: {incident.close_reason || "not captured"}</p>
+                      <p>Resolution: {incident.resolution_summary || "not captured"}</p>
+                    </article>
+                  ))}
+                  {incidents.length === 0 ? <article className="empty-state">No cases available for closure review.</article> : null}
+                </div>
+              </section>
+            ) : null}
           </section>
         ) : null}
 
@@ -920,8 +1069,81 @@ function App() {
           <section className="panel">
             <div className="section-title">
               <div><h2>SOAR Automation</h2><p>Workflow handoff starts here. Shuffle is SOC-native; n8n can be used first when you want a quick self-hosted webhook workflow.</p></div>
-              <span className="status-pill">approval gated</span>
+              <span className="status-pill">RBAC controlled</span>
             </div>
+            <section className="panel detail-panel soar-console">
+              <div className="section-title">
+                <div><h3>Automation Request Console</h3><p>Sends live case or alert identifiers to the configured n8n webhook template. High-impact approval gates are the next backend control.</p></div>
+                <span className="state-pill state-configured">{roleCopy.label}: {user.role === "viewer" ? "read-only" : "can request"}</span>
+              </div>
+              <div className="automation-grid">
+                <select value={automationForm.workflow} onChange={(e) => setAutomationForm({ ...automationForm, workflow: e.target.value })}>
+                  <option value="notify">notify analyst channel</option>
+                  <option value="create_ticket">create external ticket</option>
+                  <option value="enrich_ioc">enrich IOC</option>
+                  <option value="containment_approval">request containment approval</option>
+                </select>
+                <select value={automationForm.case_id} onChange={(e) => setAutomationForm({ ...automationForm, case_id: e.target.value })}>
+                  <option value="">case id optional</option>
+                  {incidents.map((incident) => <option key={incident.id} value={incident.id}>#{incident.id} {incident.title}</option>)}
+                </select>
+                <select value={automationForm.alert_id} onChange={(e) => setAutomationForm({ ...automationForm, alert_id: e.target.value })}>
+                  <option value="">alert id optional</option>
+                  {alerts.map((alert) => <option key={alert.alert_id} value={alert.alert_id}>{alert.alert_id} - {alert.rule.name}</option>)}
+                </select>
+                <input placeholder="Approval note" value={automationForm.approval_note} onChange={(e) => setAutomationForm({ ...automationForm, approval_note: e.target.value })} />
+                <button className="primary-action" onClick={requestAutomationRun} disabled={user.role === "viewer"}><Play size={14} /> Request run</button>
+              </div>
+            {automationMsg ? <p>{automationMsg}</p> : null}
+            </section>
+            <div className="settings-grid">
+              <article className="panel detail-panel">
+                <h3>Connector Access</h3>
+                <div className="permission-grid">
+                  {automationConnectors.map((connector) => (
+                    <span key={connector.id}>
+                      <b>{connector.name}</b>
+                      <em>{connector.enabled ? "enabled" : "not configured"} | {connector.webhook_url_masked || connector.last_error || "waiting for URL"}</em>
+                    </span>
+                  ))}
+                  {automationConnectors.length === 0 ? <span><b>No connector rows</b><em>Backend has not returned automation connector state yet.</em></span> : null}
+                </div>
+              </article>
+              <article className="panel detail-panel">
+                <h3>Workflow Templates</h3>
+                <div className="permission-grid">
+                  {workflowTemplates.map((template) => (
+                    <span key={template.id}>
+                      <b>{template.name}</b>
+                      <em>{template.enabled ? "ready" : "disabled until connector configured"} | {template.description}</em>
+                    </span>
+                  ))}
+                  {workflowTemplates.length === 0 ? <span><b>No templates loaded</b><em>Check API health and authentication.</em></span> : null}
+                </div>
+              </article>
+            </div>
+            <section className="panel detail-panel">
+              <h3>Workflow Run History</h3>
+              <div className="table-wrap">
+                <table>
+                  <thead><tr><th>ID</th><th>Template</th><th>Status</th><th>Case</th><th>Alert</th><th>Response</th><th>Completed</th></tr></thead>
+                  <tbody>
+                    {workflowRuns.slice(0, 8).map((run) => (
+                      <tr key={run.id}>
+                        <td>#{run.id}</td>
+                        <td>{run.template_name}</td>
+                        <td><span className={`sev ${run.status === "success" ? "sev-low" : run.status === "error" ? "sev-critical" : "sev-medium"}`}>{run.status}</span></td>
+                        <td>{run.incident_id || "-"}</td>
+                        <td>{run.alert_id || "-"}</td>
+                        <td>{run.response_detail || run.request_summary}</td>
+                        <td>{run.completed_at ? new Date(run.completed_at).toLocaleString() : "queued"}</td>
+                      </tr>
+                    ))}
+                    {workflowRuns.length === 0 ? <tr><td colSpan={7}>No automation runs yet. Configure n8n and request a workflow run from a case or alert.</td></tr> : null}
+                  </tbody>
+                </table>
+              </div>
+            </section>
             <div className="settings-grid">
               <article className="panel detail-panel">
                 <h3>n8n Setup on Wazuh Machine</h3>
@@ -944,10 +1166,10 @@ docker run -d --name n8n --restart unless-stopped \\
               <article className="panel detail-panel">
                 <h3>MVP Workflow Actions</h3>
                 <div className="permission-grid">
-                  <span><b>Notify</b><em>Slack or email analyst channel for high-signal cases</em></span>
-                  <span><b>Create Ticket</b><em>Jira, TheHive, Linear, or simple webhook ticket</em></span>
-                  <span><b>Enrich IOC</b><em>Call VirusTotal, AbuseIPDB, OTX, MISP, or local IOC</em></span>
-                  <span><b>Contain</b><em>Block IP, disable user, isolate host only after approval</em></span>
+                  <span><b>Notify</b><em>Analyst may request; viewer cannot run</em></span>
+                  <span><b>Create Ticket</b><em>Analyst or admin handoff to external queue</em></span>
+                  <span><b>Enrich IOC</b><em>Read-only enrichment before case action</em></span>
+                  <span><b>Contain</b><em>Admin approval required before destructive action</em></span>
                 </div>
               </article>
             </div>
