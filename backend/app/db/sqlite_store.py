@@ -77,20 +77,75 @@ def upsert_alert(alert: NormalizedAlert) -> None:
     conn.close()
 
 
-def list_alerts(limit: int = 100) -> list[NormalizedAlert]:
-    conn = get_conn()
-    rows = conn.execute(
-        "SELECT payload FROM alerts ORDER BY created_at DESC LIMIT ?", (limit,)
-    ).fetchall()
-    conn.close()
-    return [NormalizedAlert(**json.loads(row["payload"])) for row in rows]
+def _alert_matches(alert: NormalizedAlert, filters: dict[str, str]) -> bool:
+    severity = filters.get("severity", "").lower()
+    if severity and alert.severity.lower() != severity:
+        return False
+    rule_id = filters.get("rule_id", "").lower()
+    if rule_id and rule_id not in alert.rule.id.lower():
+        return False
+    hostname = filters.get("hostname", "").lower()
+    if hostname and hostname not in alert.asset.hostname.lower():
+        return False
+    src_ip = filters.get("src_ip", "").lower()
+    if src_ip and src_ip not in alert.network.src_ip.lower():
+        return False
+    username = filters.get("user", "").lower()
+    if username and username not in alert.user.name.lower():
+        return False
+    mitre = filters.get("mitre", "").lower()
+    if mitre:
+        values = " ".join(alert.mitre.tactics + alert.mitre.techniques).lower()
+        if mitre not in values:
+            return False
+    query = filters.get("q", "").lower()
+    if query:
+        searchable = " ".join(
+            [
+                alert.alert_id,
+                alert.severity,
+                alert.source_tool,
+                alert.rule.id,
+                alert.rule.name,
+                alert.rule.description,
+                alert.asset.hostname,
+                alert.asset.ip,
+                alert.user.name,
+                alert.network.src_ip,
+                alert.network.dst_ip,
+            ]
+        ).lower()
+        if query not in searchable:
+            return False
+    return True
 
 
-def count_alerts() -> int:
+def list_alerts(limit: int = 100, offset: int = 0, filters: dict[str, str] | None = None) -> list[NormalizedAlert]:
+    safe_limit = max(1, min(limit, 1000))
+    safe_offset = max(0, offset)
     conn = get_conn()
-    row = conn.execute("SELECT COUNT(*) AS total FROM alerts").fetchone()
+    # Pull extra rows when filters are active so analysts can page through flood data
+    # without loading the full table into the frontend.
+    fetch_limit = safe_limit if not filters else 10000
+    rows = conn.execute("SELECT payload FROM alerts ORDER BY created_at DESC LIMIT ?", (fetch_limit,)).fetchall()
     conn.close()
-    return int(row["total"] if row else 0)
+    alerts = [NormalizedAlert(**json.loads(row["payload"])) for row in rows]
+    if filters:
+        active_filters = {key: value for key, value in filters.items() if value}
+        alerts = [alert for alert in alerts if _alert_matches(alert, active_filters)]
+    return alerts[safe_offset : safe_offset + safe_limit]
+
+
+def count_alerts(filters: dict[str, str] | None = None) -> int:
+    conn = get_conn()
+    if not filters:
+        row = conn.execute("SELECT COUNT(*) AS total FROM alerts").fetchone()
+        conn.close()
+        return int(row["total"] if row else 0)
+    rows = conn.execute("SELECT payload FROM alerts ORDER BY created_at DESC LIMIT 10000").fetchall()
+    conn.close()
+    active_filters = {key: value for key, value in filters.items() if value}
+    return sum(1 for row in rows if _alert_matches(NormalizedAlert(**json.loads(row["payload"])), active_filters))
 
 
 def upsert_triage(decision: TriageDecision) -> None:

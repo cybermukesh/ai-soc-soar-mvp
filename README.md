@@ -90,7 +90,8 @@ soar/             n8n and Shuffle workflow templates
 ## Day 3 Wazuh Pipeline Endpoints
 
 - `GET /alerts/sample`: returns normalized demo Wazuh alerts plus summary counts.
-- `GET /alerts/normalized`: returns normalized alert objects for dashboard rendering.
+- `GET /alerts/normalized`: returns normalized alert objects with pagination and SOC filters.
+- `GET /api/v1/alerts`: returns persisted alerts with `limit`, `offset`, severity, rule, host, source IP, user, MITRE, and search filters.
 - `POST /alerts/normalize`: converts one raw Wazuh alert into the normalized schema.
 - `GET /alerts/wazuh/recent`: fetches recent alerts from OpenSearch when credentials are configured.
 
@@ -98,14 +99,24 @@ soar/             n8n and Shuffle workflow templates
 
 - `POST /triage/alert`: triages one normalized alert and returns structured JSON.
 - `GET /triage/sample`: triages all sample normalized alerts in batch mode.
+- `GET /triage/noise-reduction`: returns raw alert count, suppressed noise, grouped duplicates, analyst item count, and reduction percentage.
+
+## Day 4-5 Control Plane Endpoints
+
+- `GET /api/v1/settings/ai-providers`: lists OpenAI, Anthropic, Ollama, and offline heuristic model settings with masked secrets.
+- `PUT /api/v1/settings/ai-providers/{provider}`: admin-only update for model, cache, token limits, severity threshold, base URL, and API key.
+- `POST /api/v1/settings/ai-providers/{provider}/health`: validates whether a provider is configured without exposing the secret.
+- `GET /api/v1/settings/threat-intel`: lists VirusTotal, AbuseIPDB, OTX, MISP, and local IOC settings with masked secrets.
+- `PUT /api/v1/settings/threat-intel/{provider}`: admin-only update for API key, base URL, daily limit, and enrichment cache TTL.
+- `POST /api/v1/settings/threat-intel/{provider}/health`: validates threat-intel configuration state.
 
 ## 7-Day Build Plan
 
 - Day 1: Market strategy, competitor/product scan, industry pain-point research, startup positioning, and focused MVP idea selection.
 - Day 2: Product plan, high-level architecture, technology stack, Codex skills, repository setup, and build sequence.
 - Day 3: Wazuh deployment path, OpenSearch connectivity, sample alert fetch, normalization/fine-tuning, and MVP dashboard alert display.
-- Day 4: AI triage endpoints with structured JSON output, confidence, evidence, MITRE context, risk scoring, and cache replay.
-- Day 5: Incident grouping, risk scoring aggregation, duplicate/noise feedback, and measurable alert-reduction metrics.
+- Day 4: AI triage endpoints with signal/noise scoring, correlation, queue routing, suppression reason, confidence, evidence, MITRE context, risk scoring, cache replay, and BYO model settings.
+- Day 5: Incident grouping, threat-intel enrichment, risk scoring aggregation, duplicate/noise feedback, and measurable alert-reduction metrics.
 - Day 6: n8n/Shuffle SOAR workflow triggers, Slack notifications, approval controls, and analyst UI.
 - Day 7: Demo polish, security review, before/after pitch metrics, dashboard screenshots, and judge-ready story.
 

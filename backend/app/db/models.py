@@ -64,6 +64,44 @@ class ConnectorHealthCheck(Base):
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class AiProviderSetting(Base):
+    __tablename__ = "ai_provider_settings"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    provider: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    model: Mapped[str] = mapped_column(String(120), default="")
+    api_key_encrypted: Mapped[str] = mapped_column(String(1000), default="")
+    api_key_masked: Mapped[str] = mapped_column(String(20), default="")
+    base_url: Mapped[str] = mapped_column(String(255), default="")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    cache_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    max_input_chars: Mapped[int] = mapped_column(default=6000)
+    max_output_tokens: Mapped[int] = mapped_column(default=700)
+    min_severity: Mapped[str] = mapped_column(String(20), default="medium")
+    fallback_model: Mapped[str] = mapped_column(String(120), default="")
+    last_status: Mapped[str] = mapped_column(String(40), default="unknown")
+    last_error: Mapped[str] = mapped_column(String(300), default="")
+    updated_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class ThreatIntelProviderSetting(Base):
+    __tablename__ = "threat_intel_provider_settings"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    provider: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    api_key_encrypted: Mapped[str] = mapped_column(String(1000), default="")
+    api_key_masked: Mapped[str] = mapped_column(String(20), default="")
+    base_url: Mapped[str] = mapped_column(String(255), default="")
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    daily_limit: Mapped[int] = mapped_column(default=500)
+    cache_ttl_minutes: Mapped[int] = mapped_column(default=1440)
+    last_status: Mapped[str] = mapped_column(String(40), default="unknown")
+    last_error: Mapped[str] = mapped_column(String(300), default="")
+    updated_at: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 class Incident(Base):
     __tablename__ = "incidents"
     id: Mapped[int] = mapped_column(primary_key=True)

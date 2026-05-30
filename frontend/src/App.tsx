@@ -1,5 +1,5 @@
 import React from "react";
-import { Activity, BarChart3, Bot, ClipboardList, Plug, ShieldAlert, Users, Workflow } from "lucide-react";
+import { Activity, BarChart3, Bot, ClipboardList, Plug, Settings, ShieldAlert, Users, Workflow } from "lucide-react";
 import { createRoot } from "react-dom/client";
 import "./styles/app.css";
 
@@ -57,6 +57,8 @@ type TriageDecision = {
 };
 type TriageHistory = { alert_id: string; decision: TriageDecision | null; disposition: string; note: string; updated_at: string };
 type NoiseSummary = { total_alerts: number; suppressed_noise: number; grouped_duplicates: number; escalated_signals: number; review_items: number; estimated_analyst_items: number; estimated_noise_reduction_percent: number; strategy: string };
+type AiProvider = { id: number; provider: string; model: string; api_key_masked: string; base_url: string; enabled: boolean; cache_enabled: boolean; max_input_chars: number; max_output_tokens: number; min_severity: string; fallback_model: string; last_status: string; last_error: string; updated_at: string };
+type ThreatIntelProvider = { id: number; provider: string; api_key_masked: string; base_url: string; enabled: boolean; daily_limit: number; cache_ttl_minutes: number; last_status: string; last_error: string; updated_at: string };
 
 const verdictClass: Record<TriageDecision["verdict"], string> = {
   false_positive: "sev-low",
@@ -75,7 +77,7 @@ function App() {
   const [fullName, setFullName] = React.useState("");
   const [error, setError] = React.useState("");
   const [loading, setLoading] = React.useState(false);
-  const [tab, setTab] = React.useState<"overview" | "connectors" | "triage" | "incidents" | "automation" | "admin">("overview");
+  const [tab, setTab] = React.useState<"overview" | "connectors" | "triage" | "incidents" | "automation" | "settings" | "admin">("overview");
   const [decisions, setDecisions] = React.useState<TriageDecision[]>([]);
   const [noiseSummary, setNoiseSummary] = React.useState<NoiseSummary | null>(null);
   const [triageHistory, setTriageHistory] = React.useState<TriageHistory[]>([]);
@@ -101,6 +103,11 @@ function App() {
   const [incidentForm, setIncidentForm] = React.useState({ title: "", severity: "medium", risk_score: 50, source_tool: "wazuh", alert_id: "", ticket_ref: "", owner_name: "", phase: "new", summary: "", priority: "P3", sla_due_at: "", escalated: false, close_reason: "", resolution_summary: "" });
   const [incidentEventForm, setIncidentEventForm] = React.useState({ event_type: "note", detail: "" });
   const [incidentMsg, setIncidentMsg] = React.useState("");
+  const [aiProviders, setAiProviders] = React.useState<AiProvider[]>([]);
+  const [intelProviders, setIntelProviders] = React.useState<ThreatIntelProvider[]>([]);
+  const [settingsMsg, setSettingsMsg] = React.useState("");
+  const [aiForm, setAiForm] = React.useState({ provider: "openai", model: "gpt-4o-mini", api_key: "", base_url: "", enabled: true, cache_enabled: true, max_input_chars: 6000, max_output_tokens: 700, min_severity: "medium", fallback_model: "" });
+  const [intelForm, setIntelForm] = React.useState({ provider: "virustotal", api_key: "", base_url: "", enabled: false, daily_limit: 500, cache_ttl_minutes: 1440 });
   const healthyConnectors = connectors.filter((c) => c.last_status === "ok").length;
   const openIncidents = incidents.filter((i) => i.status !== "resolved").length;
   const highRiskAlerts = alerts.filter((a) => a.severity === "high" || a.severity === "critical").length;
@@ -185,6 +192,18 @@ function App() {
 
   React.useEffect(() => {
     if (!token) return;
+    fetch(`${API}/api/v1/settings/ai-providers`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => setAiProviders(Array.isArray(data) ? data : []))
+      .catch(() => setAiProviders([]));
+    fetch(`${API}/api/v1/settings/threat-intel`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((data) => setIntelProviders(Array.isArray(data) ? data : []))
+      .catch(() => setIntelProviders([]));
+  }, [token, settingsMsg]);
+
+  React.useEffect(() => {
+    if (!token) return;
     const params = new URLSearchParams();
     if (incidentFilter.q) params.set("q", incidentFilter.q);
     if (incidentFilter.status) params.set("status", incidentFilter.status);
@@ -230,6 +249,46 @@ function App() {
     });
     setConnectorMsg(res.ok ? "Seeded connectors from env" : "Failed to seed from env");
     refreshConnectors();
+  }
+
+  async function saveAiProvider() {
+    const res = await fetch(`${API}/api/v1/settings/ai-providers/${aiForm.provider}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(aiForm),
+    });
+    const data = await res.json();
+    setSettingsMsg(res.ok ? `Saved AI provider ${data.provider}` : `Failed: ${data.detail || "error"}`);
+    setAiForm({ ...aiForm, api_key: "" });
+  }
+
+  async function checkAiProvider(provider: string) {
+    const res = await fetch(`${API}/api/v1/settings/ai-providers/${provider}/health`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    setSettingsMsg(`${provider}: ${data.detail || "health check failed"}`);
+  }
+
+  async function saveThreatIntelProvider() {
+    const res = await fetch(`${API}/api/v1/settings/threat-intel/${intelForm.provider}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(intelForm),
+    });
+    const data = await res.json();
+    setSettingsMsg(res.ok ? `Saved threat intel provider ${data.provider}` : `Failed: ${data.detail || "error"}`);
+    setIntelForm({ ...intelForm, api_key: "" });
+  }
+
+  async function checkThreatIntelProvider(provider: string) {
+    const res = await fetch(`${API}/api/v1/settings/threat-intel/${provider}/health`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    setSettingsMsg(`${provider}: ${data.detail || "health check failed"}`);
   }
 
   async function syncWazuhNow() {
@@ -436,6 +495,7 @@ function App() {
         <button className={`nav-item ${tab === "triage" ? "active" : ""}`} onClick={() => setTab("triage")}><ShieldAlert size={18} /> AI Triage</button>
         <button className={`nav-item ${tab === "incidents" ? "active" : ""}`} onClick={() => setTab("incidents")}><ClipboardList size={18} /> Cases</button>
         <button className={`nav-item ${tab === "automation" ? "active" : ""}`} onClick={() => setTab("automation")}><Workflow size={18} /> Automation</button>
+        <button className={`nav-item ${tab === "settings" ? "active" : ""}`} onClick={() => setTab("settings")}><Settings size={18} /> AI & Intel</button>
         {user.role === "admin" ? <button className={`nav-item ${tab === "admin" ? "active" : ""}`} onClick={() => setTab("admin")}><Users size={18} /> Admin</button> : null}
         <button className="nav-item" onClick={logout}><Bot size={18} /> Logout</button>
       </aside>
@@ -779,7 +839,89 @@ function App() {
           </section>
         ) : null}
 
-        {tab === "automation" ? <section className="panel"><h2>SOAR Hooks (Day 4 target)</h2><p>Approval-gated n8n/Shuffle execution panel will be enabled in Day 4 build.</p></section> : null}
+        {tab === "automation" ? <section className="panel"><h2>SOAR Hooks (Day 4 target)</h2><p>Approval-gated Shuffle execution panel will be enabled in Day 4/5 build. n8n remains optional for broad integration workflows.</p></section> : null}
+
+        {tab === "settings" ? (
+          <section className="panel">
+            <div className="section-title">
+              <div>
+                <h2>AI Model and Threat Intel Control Plane</h2>
+                <p>Bring-your-own model and enrichment keys. Secrets are masked in the UI and write access is admin-only.</p>
+              </div>
+              <span className="status-pill">{aiProviders.filter((p) => p.enabled).length} AI active / {intelProviders.filter((p) => p.enabled).length} intel active</span>
+            </div>
+            {settingsMsg ? <p>{settingsMsg}</p> : null}
+            {user.role === "admin" ? (
+              <div className="settings-grid">
+                <article className="panel detail-panel">
+                  <h3>AI Provider</h3>
+                  <div className="admin-form">
+                    <select value={aiForm.provider} onChange={(e) => setAiForm({ ...aiForm, provider: e.target.value })}>
+                      <option value="openai">OpenAI</option>
+                      <option value="anthropic">Anthropic</option>
+                      <option value="ollama">Ollama local</option>
+                      <option value="offline">Offline heuristic</option>
+                    </select>
+                    <input placeholder="Model" value={aiForm.model} onChange={(e) => setAiForm({ ...aiForm, model: e.target.value })} />
+                    <input placeholder="API key / token" type="password" value={aiForm.api_key} onChange={(e) => setAiForm({ ...aiForm, api_key: e.target.value })} />
+                    <input placeholder="Base URL" value={aiForm.base_url} onChange={(e) => setAiForm({ ...aiForm, base_url: e.target.value })} />
+                    <input type="number" min={500} max={50000} value={aiForm.max_input_chars} onChange={(e) => setAiForm({ ...aiForm, max_input_chars: Number(e.target.value) || 6000 })} />
+                    <input type="number" min={100} max={4000} value={aiForm.max_output_tokens} onChange={(e) => setAiForm({ ...aiForm, max_output_tokens: Number(e.target.value) || 700 })} />
+                    <select value={aiForm.min_severity} onChange={(e) => setAiForm({ ...aiForm, min_severity: e.target.value })}>
+                      <option value="low">low</option><option value="medium">medium</option><option value="high">high</option><option value="critical">critical</option>
+                    </select>
+                    <input placeholder="Fallback model" value={aiForm.fallback_model} onChange={(e) => setAiForm({ ...aiForm, fallback_model: e.target.value })} />
+                    <label className="checkbox-line"><input type="checkbox" checked={aiForm.enabled} onChange={(e) => setAiForm({ ...aiForm, enabled: e.target.checked })} /> Enabled</label>
+                    <label className="checkbox-line"><input type="checkbox" checked={aiForm.cache_enabled} onChange={(e) => setAiForm({ ...aiForm, cache_enabled: e.target.checked })} /> Cache duplicate triage</label>
+                    <button onClick={saveAiProvider}>Save AI provider</button>
+                  </div>
+                </article>
+                <article className="panel detail-panel">
+                  <h3>Threat Intel Provider</h3>
+                  <div className="admin-form">
+                    <select value={intelForm.provider} onChange={(e) => setIntelForm({ ...intelForm, provider: e.target.value })}>
+                      <option value="virustotal">VirusTotal</option>
+                      <option value="abuseipdb">AbuseIPDB</option>
+                      <option value="otx">AlienVault OTX</option>
+                      <option value="misp">MISP</option>
+                      <option value="local_ioc">Local IOC</option>
+                    </select>
+                    <input placeholder="API key" type="password" value={intelForm.api_key} onChange={(e) => setIntelForm({ ...intelForm, api_key: e.target.value })} />
+                    <input placeholder="Base URL" value={intelForm.base_url} onChange={(e) => setIntelForm({ ...intelForm, base_url: e.target.value })} />
+                    <input type="number" min={1} max={100000} value={intelForm.daily_limit} onChange={(e) => setIntelForm({ ...intelForm, daily_limit: Number(e.target.value) || 500 })} />
+                    <input type="number" min={5} max={43200} value={intelForm.cache_ttl_minutes} onChange={(e) => setIntelForm({ ...intelForm, cache_ttl_minutes: Number(e.target.value) || 1440 })} />
+                    <label className="checkbox-line"><input type="checkbox" checked={intelForm.enabled} onChange={(e) => setIntelForm({ ...intelForm, enabled: e.target.checked })} /> Enabled</label>
+                    <button onClick={saveThreatIntelProvider}>Save intel provider</button>
+                  </div>
+                </article>
+              </div>
+            ) : null}
+            <div className="settings-grid">
+              <article className="panel detail-panel">
+                <h3>Configured AI Providers</h3>
+                <div className="admin-list">
+                  {aiProviders.map((p) => (
+                    <article className="admin-item" key={p.provider}>
+                      <span>{p.provider} | model={p.model || "-"} | enabled={String(p.enabled)} | cache={String(p.cache_enabled)} | secret={p.api_key_masked || "not set"} | min={p.min_severity} | {p.last_status}</span>
+                      <button onClick={() => checkAiProvider(p.provider)}>Check</button>
+                    </article>
+                  ))}
+                </div>
+              </article>
+              <article className="panel detail-panel">
+                <h3>Configured Threat Intel</h3>
+                <div className="admin-list">
+                  {intelProviders.map((p) => (
+                    <article className="admin-item" key={p.provider}>
+                      <span>{p.provider} | enabled={String(p.enabled)} | limit={p.daily_limit}/day | ttl={p.cache_ttl_minutes}m | secret={p.api_key_masked || "not set"} | {p.last_status}</span>
+                      <button onClick={() => checkThreatIntelProvider(p.provider)}>Check</button>
+                    </article>
+                  ))}
+                </div>
+              </article>
+            </div>
+          </section>
+        ) : null}
 
         {tab === "admin" && user.role === "admin" ? (
           <section className="panel">

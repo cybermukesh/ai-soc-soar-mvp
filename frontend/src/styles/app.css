@@ -269,6 +269,7 @@ h3 {
 .panel-grid,
 .dashboard-grid,
 .connector-grid,
+.settings-grid,
 .detail-grid,
 .pipeline,
 .admin-form {
@@ -285,6 +286,7 @@ h3 {
 .panel-grid,
 .dashboard-grid,
 .connector-grid,
+.settings-grid,
 .detail-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -814,6 +816,7 @@ h3 {
   .panel-grid,
   .dashboard-grid,
   .connector-grid,
+  .settings-grid,
   .pipeline,
   .detail-grid,
   .ingestion-strip,

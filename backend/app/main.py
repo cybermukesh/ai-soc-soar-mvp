@@ -1,3 +1,5 @@
+import os
+
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -6,8 +8,9 @@ from sqlalchemy import text
 from app.api.auth import current_user, require_role, router as auth_router
 from app.api.connectors import router as connectors_router
 from app.api.incidents import router as incidents_router
+from app.api.settings import router as settings_router
 from app.connectors.opensearch import fetch_recent_wazuh_alerts, opensearch_configured
-from app.db.models import Base
+from app.db.models import AiProviderSetting, Base, ThreatIntelProviderSetting
 from app.db.sqlite_store import (
     count_alerts,
     init_db,
@@ -24,6 +27,7 @@ from app.connectors.wazuh import normalize_wazuh_alert, normalize_wazuh_hits
 from app.models.triage import TriageBatchResponse, TriageFeedbackRequest, TriageHistoryEntry, TriageRequest
 from app.services.alert_store import load_normalized_sample_alerts, summarize_alerts
 from app.services.auth import ensure_admin_seed
+from app.services.crypto import encrypt_secret
 from app.services.triage import noise_reduction_summary, triage_alert, triage_alerts, triage_cache_size
 
 app = FastAPI(
@@ -151,9 +155,58 @@ def startup() -> None:
                 )
             )
             conn.commit()
+        ai_cols = conn.execute(text("PRAGMA table_info(ai_provider_settings)")).fetchall()
+        if not ai_cols:
+            conn.execute(
+                text(
+                    """
+                    CREATE TABLE ai_provider_settings (
+                        id INTEGER PRIMARY KEY,
+                        provider VARCHAR(40) NOT NULL UNIQUE,
+                        model VARCHAR(120) DEFAULT '',
+                        api_key_encrypted VARCHAR(1000) DEFAULT '',
+                        api_key_masked VARCHAR(20) DEFAULT '',
+                        base_url VARCHAR(255) DEFAULT '',
+                        enabled BOOLEAN DEFAULT 0,
+                        cache_enabled BOOLEAN DEFAULT 1,
+                        max_input_chars INTEGER DEFAULT 6000,
+                        max_output_tokens INTEGER DEFAULT 700,
+                        min_severity VARCHAR(20) DEFAULT 'medium',
+                        fallback_model VARCHAR(120) DEFAULT '',
+                        last_status VARCHAR(40) DEFAULT 'unknown',
+                        last_error VARCHAR(300) DEFAULT '',
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+            )
+            conn.commit()
+        intel_cols = conn.execute(text("PRAGMA table_info(threat_intel_provider_settings)")).fetchall()
+        if not intel_cols:
+            conn.execute(
+                text(
+                    """
+                    CREATE TABLE threat_intel_provider_settings (
+                        id INTEGER PRIMARY KEY,
+                        provider VARCHAR(40) NOT NULL UNIQUE,
+                        api_key_encrypted VARCHAR(1000) DEFAULT '',
+                        api_key_masked VARCHAR(20) DEFAULT '',
+                        base_url VARCHAR(255) DEFAULT '',
+                        enabled BOOLEAN DEFAULT 0,
+                        daily_limit INTEGER DEFAULT 500,
+                        cache_ttl_minutes INTEGER DEFAULT 1440,
+                        last_status VARCHAR(40) DEFAULT 'unknown',
+                        last_error VARCHAR(300) DEFAULT '',
+                        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+            )
+            conn.commit()
     db: Session = SessionLocal()
     try:
         ensure_admin_seed(db)
+        _seed_platform_settings(db)
     finally:
         db.close()
 
@@ -161,6 +214,89 @@ def startup() -> None:
 app.include_router(auth_router)
 app.include_router(connectors_router)
 app.include_router(incidents_router)
+app.include_router(settings_router)
+
+
+def _mask_secret(value: str) -> str:
+    if not value:
+        return ""
+    if len(value) <= 6:
+        return "******"
+    return f"{value[:3]}...{value[-3:]}"
+
+
+def _seed_platform_settings(db: Session) -> None:
+    ai_defaults = [
+        {
+            "provider": "openai",
+            "model": os.getenv("LLM_MODEL", "gpt-4o-mini"),
+            "api_key": os.getenv("OPENAI_API_KEY", ""),
+            "enabled": os.getenv("LLM_PROVIDER", "openai") == "openai",
+            "cache_enabled": os.getenv("LLM_CACHE_ENABLED", "true").lower() == "true",
+            "max_input_chars": int(os.getenv("LLM_MAX_INPUT_CHARS", "6000")),
+            "max_output_tokens": int(os.getenv("LLM_MAX_OUTPUT_TOKENS", "700")),
+            "min_severity": os.getenv("LLM_TRIAGE_ONLY_MIN_SEVERITY", "medium"),
+        },
+        {
+            "provider": "anthropic",
+            "model": "claude-3-5-haiku-latest",
+            "api_key": os.getenv("ANTHROPIC_API_KEY", ""),
+            "enabled": os.getenv("LLM_PROVIDER", "") == "anthropic",
+            "cache_enabled": True,
+            "max_input_chars": 6000,
+            "max_output_tokens": 700,
+            "min_severity": "medium",
+        },
+        {
+            "provider": "ollama",
+            "model": os.getenv("OLLAMA_MODEL", "llama3.1:8b"),
+            "api_key": "",
+            "base_url": os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+            "enabled": os.getenv("LLM_PROVIDER", "") == "ollama",
+            "cache_enabled": True,
+            "max_input_chars": 6000,
+            "max_output_tokens": 700,
+            "min_severity": "medium",
+        },
+        {
+            "provider": "offline",
+            "model": "heuristic-v1",
+            "api_key": "",
+            "enabled": os.getenv("LLM_PROVIDER", "") == "offline",
+            "cache_enabled": True,
+            "max_input_chars": 6000,
+            "max_output_tokens": 700,
+            "min_severity": "low",
+        },
+    ]
+    for item in ai_defaults:
+        if db.query(AiProviderSetting).filter(AiProviderSetting.provider == item["provider"]).first():
+            continue
+        row = AiProviderSetting(
+            provider=item["provider"],
+            model=item["model"],
+            base_url=item.get("base_url", ""),
+            enabled=item["enabled"],
+            cache_enabled=item["cache_enabled"],
+            max_input_chars=item["max_input_chars"],
+            max_output_tokens=item["max_output_tokens"],
+            min_severity=item["min_severity"],
+            api_key_encrypted=encrypt_secret(item["api_key"]),
+            api_key_masked=_mask_secret(item["api_key"]),
+            last_status="seeded",
+        )
+        db.add(row)
+    for provider in ("virustotal", "abuseipdb", "otx", "misp", "local_ioc"):
+        if db.query(ThreatIntelProviderSetting).filter(ThreatIntelProviderSetting.provider == provider).first():
+            continue
+        db.add(
+            ThreatIntelProviderSetting(
+                provider=provider,
+                enabled=provider == "local_ioc",
+                last_status="seeded",
+            )
+        )
+    db.commit()
 
 
 async def _sync_wazuh_from_opensearch(limit: int = 100, triage: bool = True) -> dict:
@@ -274,13 +410,75 @@ def sample_alerts(_: Session = Depends(require_role("admin", "analyst", "viewer"
 
 
 @app.get("/alerts/normalized")
-def normalized_alerts(_: Session = Depends(require_role("admin", "analyst", "viewer"))) -> list[dict]:
-    alerts = list_alerts(limit=200)
+def normalized_alerts(
+    limit: int = 200,
+    offset: int = 0,
+    severity: str = "",
+    rule_id: str = "",
+    hostname: str = "",
+    src_ip: str = "",
+    user_name: str = "",
+    mitre: str = "",
+    q: str = "",
+    _: Session = Depends(require_role("admin", "analyst", "viewer")),
+) -> dict:
+    if limit < 1 or limit > 1000:
+        raise HTTPException(status_code=400, detail="limit must be between 1 and 1000")
+    filters = {
+        "severity": severity,
+        "rule_id": rule_id,
+        "hostname": hostname,
+        "src_ip": src_ip,
+        "user": user_name,
+        "mitre": mitre,
+        "q": q,
+    }
+    alerts = list_alerts(limit=limit, offset=offset, filters=filters)
     if not alerts:
         alerts = load_normalized_sample_alerts()
         for alert in alerts:
             upsert_alert(alert)
-    return [alert.model_dump() for alert in alerts]
+    return {
+        "total": count_alerts(filters=filters),
+        "limit": limit,
+        "offset": offset,
+        "filters": filters,
+        "alerts": [alert.model_dump() for alert in alerts],
+    }
+
+
+@app.get("/api/v1/alerts")
+def alert_search(
+    limit: int = 100,
+    offset: int = 0,
+    severity: str = "",
+    rule_id: str = "",
+    hostname: str = "",
+    src_ip: str = "",
+    user_name: str = "",
+    mitre: str = "",
+    q: str = "",
+    _: Session = Depends(require_role("admin", "analyst", "viewer")),
+) -> dict:
+    if limit < 1 or limit > 1000:
+        raise HTTPException(status_code=400, detail="limit must be between 1 and 1000")
+    filters = {
+        "severity": severity,
+        "rule_id": rule_id,
+        "hostname": hostname,
+        "src_ip": src_ip,
+        "user": user_name,
+        "mitre": mitre,
+        "q": q,
+    }
+    alerts = list_alerts(limit=limit, offset=offset, filters=filters)
+    return {
+        "total": count_alerts(filters=filters),
+        "limit": limit,
+        "offset": offset,
+        "filters": filters,
+        "alerts": [alert.model_dump() for alert in alerts],
+    }
 
 
 @app.get("/triage/alerts/recent")

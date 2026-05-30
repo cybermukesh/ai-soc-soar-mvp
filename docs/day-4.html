@@ -36,6 +36,8 @@
           <li>Structured triage decisions with verdict, confidence, risk score, summary, evidence, MITRE context, and SOAR recommendation.</li>
           <li>Expanded triage output with impacted entities, L2 investigation steps, containment steps, resolution criteria, analyst questions, and recommended actions.</li>
           <li>Cache-aware triage flow to avoid repeated low-value model calls for duplicate alert signatures.</li>
+          <li>Noise-reduction engine now calculates signal score, noise score, analyst priority, queue, suppression decision, suppression reason, and correlation key.</li>
+          <li>Verified current live dataset: 100 alerts reduced to 38 analyst work items, an estimated 62 percent workload reduction.</li>
           <li>Force-refresh option preserved for analyst-controlled retriage.</li>
           <li>Triage history endpoint stores analyst disposition and notes.</li>
           <li>Frontend AI Triage Workbench shows raw event access, evidence, investigation steps, containment, resolution criteria, analyst questions, and review feedback.</li>
@@ -66,13 +68,26 @@
       </section>
 
       <section class="panel">
+        <h2>Control Plane Completed</h2>
+        <ul>
+          <li>Persistent AI provider settings added for OpenAI, Anthropic, Ollama, and offline heuristic mode.</li>
+          <li>Persistent threat-intel provider settings added for VirusTotal, AbuseIPDB, OTX, MISP, and local IOC matching.</li>
+          <li>Secrets are masked in API responses and stored through the backend secret helper.</li>
+          <li>Admin-only settings APIs and frontend AI & Intel page added.</li>
+          <li>Provider health checks report configuration state without exposing keys.</li>
+          <li>Alert flood handling started with paginated and filtered persisted-alert search.</li>
+        </ul>
+      </section>
+
+      <section class="panel">
         <h2>Still In Progress</h2>
         <ul>
           <li>Strict confidence threshold routing and analyst escalation policy.</li>
-          <li>Prompt/template versioning for future cloud LLM integration.</li>
-          <li>Incident grouping and deduplication by asset, rule, source, and time window.</li>
+          <li>Triage service wiring to active cloud/local model settings.</li>
+          <li>Threat-intel IOC lookup, cache, and enrichment details inside triage.</li>
+          <li>Incident grouping and deduplication as first-class persisted objects.</li>
           <li>Evidence attachments and richer investigation notebook.</li>
-          <li>SOAR playbook dispatch to n8n/Shuffle with human approval gates.</li>
+          <li>SOAR playbook dispatch to Shuffle with human approval gates; n8n remains optional.</li>
         </ul>
       </section>
 
@@ -83,6 +98,10 @@
           <li><code>POST /triage/alert</code></li>
           <li><code>GET /triage/history</code></li>
           <li><code>POST /triage/feedback</code></li>
+          <li><code>GET /triage/noise-reduction</code></li>
+          <li><code>GET /api/v1/alerts</code></li>
+          <li><code>GET /api/v1/settings/ai-providers</code></li>
+          <li><code>GET /api/v1/settings/threat-intel</code></li>
           <li><code>GET /api/v1/incidents</code></li>
           <li><code>POST /api/v1/incidents</code></li>
           <li><code>PATCH /api/v1/incidents/{id}/status</code></li>

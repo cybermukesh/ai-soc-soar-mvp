@@ -94,6 +94,10 @@ It is intentionally detailed and operational (not pitch-level).
 - [x] triage endpoints for single and sample batch
 - [x] verdict/confidence/risk/recommendation structured output
 - [x] duplicate triage cache hook
+- [x] signal score, noise score, analyst priority, queue, and suppression decision
+- [x] correlation key, correlation count, related alert count, and entity frequency
+- [x] noise-reduction endpoint with raw alerts, grouped duplicates, suppressed noise, analyst items, and reduction percentage
+- [x] verified current dataset: 100 alerts reduced to 38 analyst items (62 percent estimated workload reduction)
 - [x] impacted entities field
 - [x] L2 investigation steps field
 - [x] containment steps field
@@ -104,6 +108,20 @@ It is intentionally detailed and operational (not pitch-level).
 - [x] analyst feedback/disposition save flow
 - [ ] confidence threshold routing policy (strict escalation logic)
 - [ ] prompt template versioning + deterministic fallback path
+
+### AI and Threat Intel Control Plane
+- [x] persistent AI provider settings table
+- [x] OpenAI, Anthropic, Ollama, and offline heuristic provider rows
+- [x] admin-only model settings API
+- [x] masked API key storage for model providers
+- [x] model limits: max input chars, max output tokens, min severity, cache enabled, fallback model
+- [x] persistent threat-intel provider settings table
+- [x] VirusTotal, AbuseIPDB, OTX, MISP, and local IOC provider rows
+- [x] masked API key storage for threat-intel providers
+- [x] provider health/status checks without exposing secrets
+- [x] frontend AI & Intel control plane
+- [ ] triage service reads active AI settings from DB for cloud/local model calls
+- [ ] real threat-intel lookup and IOC enrichment cache
 
 ### Incident Lifecycle
 - [x] incident schema and incident events schema
@@ -129,6 +147,8 @@ It is intentionally detailed and operational (not pitch-level).
 - [x] compact mobile/tablet navigation
 - [x] duplicate React key fix for repeated Wazuh alert IDs
 - [x] case cards show priority, owner, SLA, escalation, and resolution
+- [x] AI & Intel settings page for model and enrichment provider configuration
+- [x] alert search endpoint with pagination and filters for flood handling
 - [ ] incident table sorting/paging
 - [ ] explicit severity/risk chips in incident rows
 - [ ] timeline panel grouping by event_type
