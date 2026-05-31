@@ -4,7 +4,7 @@ This backlog converts judge feedback into implementation-grade work. The rule is
 
 ## Product Goal
 
-Build a Wazuh-first AI SOC copilot that reduces alert noise, enriches important alerts, groups duplicates into analyst-ready incidents, and keeps a complete case-management trail for SOC operations.
+Build a Wazuh-first NetraShield triage engine that reduces alert noise, enriches important alerts, groups duplicates into analyst-ready incidents, and keeps a complete case-management trail for SOC operations.
 
 ## Secure Development Guardrails
 

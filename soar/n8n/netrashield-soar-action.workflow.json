@@ -1,19 +1,19 @@
 {
-  "name": "AI SOC SOAR Action Intake",
+  "name": "NetraShield Action Intake",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "ai-soc-soar-action",
+        "path": "netrashield-soar-action",
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "ai-soc-webhook",
-      "name": "AI SOC Webhook",
+      "id": "netrashield-webhook",
+      "name": "NetraShield Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [260, 280],
-      "webhookId": "ai-soc-soar-action"
+      "webhookId": "netrashield-soar-action"
     },
     {
       "parameters": {
@@ -39,7 +39,7 @@
     }
   ],
   "connections": {
-    "AI SOC Webhook": {
+    "NetraShield Webhook": {
       "main": [
         [
           {

@@ -1,6 +1,6 @@
 ---
 name: wazuh-connector
-description: Use when building or modifying Wazuh/OpenSearch ingestion, Wazuh alert normalization, sample Wazuh fixtures, or connector tests for the AI SOC SOAR MVP.
+description: Use when building or modifying Wazuh/OpenSearch ingestion, Wazuh alert normalization, sample Wazuh fixtures, or connector tests for the NetraShield MVP.
 ---
 
 # Wazuh Connector

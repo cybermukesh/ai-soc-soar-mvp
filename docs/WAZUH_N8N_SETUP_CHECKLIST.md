@@ -51,13 +51,13 @@ Create one workflow:
 
 - Trigger: Webhook
 - Method: POST
-- Path: `ai-soc-soar-action`
+- Path: `netrashield-soar-action`
 - Response: JSON with `status`, `workflow_execution_id`, and optional `ticket_id`
 
 The webhook URL will look like:
 
 ```text
-http://<host>:5679/webhook/ai-soc-soar-action
+http://<host>:5679/webhook/netrashield-soar-action
 ```
 
 Share that URL with the app as `N8N_WEBHOOK_URL` for the first MVP demo.

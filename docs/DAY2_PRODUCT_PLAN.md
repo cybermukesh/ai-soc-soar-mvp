@@ -6,7 +6,7 @@ Convert the validated startup idea into a buildable MVP plan. Day 2 is complete 
 
 ## Product Wedge
 
-Build a Wazuh-first AI SOC/SOAR automation layer that reduces alert noise before analysts spend time on it. The first proof is not a generic chatbot. It is a workflow that ingests Wazuh alerts, normalizes them, triages them with a low-cost LLM, groups repeated alerts, and sends approval-gated SOAR actions.
+Build a Wazuh-first NetraShield automation layer that reduces alert noise before analysts spend time on it. The first proof is not a generic chatbot. It is a workflow that ingests Wazuh alerts, normalizes them, triages them with a low-cost LLM, groups repeated alerts, and sends approval-gated SOAR actions.
 
 ## Target Users
 

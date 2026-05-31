@@ -631,7 +631,7 @@ function App() {
     return (
       <main className="login-shell">
         <section className="login-visual">
-          <div className="login-brandmark">AI SOC</div>
+          <div className="login-brandmark">NetraShield</div>
           <h1>Noise-aware SOC command center</h1>
           <p>Wazuh-first triage, case workflow, model controls, and SOAR handoff for lean security teams.</p>
           <div className="login-signal-grid">
@@ -641,7 +641,7 @@ function App() {
           </div>
         </section>
         <section className="login-card">
-          <h1>{authMode === "login" ? "AI SOC SOAR Login" : "Register Access"}</h1>
+          <h1>{authMode === "login" ? "NetraShield Login" : "Register Access"}</h1>
           <p>{authMode === "login" ? "Phase-1 Auth + RBAC enabled" : "New accounts are created as viewer and require admin approval."}</p>
           {authMode === "register" ? <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full name" /> : null}
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
@@ -661,7 +661,7 @@ function App() {
   return (
     <main className="app-shell">
       <aside className="sidebar">
-        <div className="brand">AI SOC</div>
+        <div className="brand">NetraShield</div>
         <button className={`nav-item ${tab === "overview" ? "active" : ""}`} onClick={() => setTab("overview")}><BarChart3 size={18} /> Executive</button>
         <button className={`nav-item ${tab === "connectors" ? "active" : ""}`} onClick={() => setTab("connectors")}><Plug size={18} /> Connectors</button>
         <button className={`nav-item ${tab === "triage" ? "active" : ""}`} onClick={() => setTab("triage")}><ShieldAlert size={18} /> AI Triage</button>
@@ -673,7 +673,7 @@ function App() {
       </aside>
       <section className="workspace">
         <header className="topbar">
-          <div><p className="eyebrow">Authenticated Session</p><h1>AI SOC SOAR Command Center</h1></div>
+          <div><p className="eyebrow">Authenticated Session</p><h1>NetraShield Command Center</h1></div>
           <div className="identity-stack">
             <span className="status-pill">{user.full_name} - {roleCopy.label}</span>
             <span className="role-caption"><LockKeyhole size={13} /> {roleCopy.detail}</span>

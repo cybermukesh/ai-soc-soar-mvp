@@ -37,8 +37,8 @@ from app.services.crypto import decrypt_secret, encrypt_secret
 from app.services.triage import noise_reduction_summary, triage_alert, triage_alerts, triage_cache_size
 
 app = FastAPI(
-    title="AI SOC SOAR MVP",
-    description="Wazuh-first, SIEM-agnostic AI SOC automation backend",
+    title="NetraShield MVP",
+    description="Wazuh-first, SIEM-agnostic NetraShield backend",
     version="0.1.0",
 )
 app.add_middleware(
@@ -377,7 +377,7 @@ def env_readiness(_: Session = Depends(require_role("admin", "analyst", "viewer"
 @app.get("/")
 def root() -> dict:
     return {
-        "name": "AI SOC SOAR MVP",
+        "name": "NetraShield MVP",
         "status": "day-3-complete",
         "docs": "/docs",
     }

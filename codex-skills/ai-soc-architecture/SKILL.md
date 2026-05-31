@@ -1,9 +1,9 @@
 ---
 name: ai-soc-architecture
-description: Use when designing or modifying the AI SOC SOAR MVP architecture, including SIEM-agnostic connector boundaries, normalized alert schema, incident workflow, SOAR approvals, and product scope.
+description: Use when designing or modifying the NetraShield MVP architecture, including SIEM-agnostic connector boundaries, normalized alert schema, incident workflow, SOAR approvals, and product scope.
 ---
 
-# AI SOC Architecture
+# NetraShield Architecture
 
 Keep the product Wazuh-first but SIEM-agnostic. Wazuh-specific parsing belongs only in connectors. Core services should consume normalized alerts.
 

@@ -1,6 +1,6 @@
 ---
 name: soar-integration
-description: Use when integrating n8n, Shuffle, Slack, TheHive, Jira, Wazuh active response, or SOAR workflow triggers for the AI SOC SOAR MVP.
+description: Use when integrating n8n, Shuffle, Slack, TheHive, Jira, Wazuh active response, or SOAR workflow triggers for the NetraShield MVP.
 ---
 
 # SOAR Integration

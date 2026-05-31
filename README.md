@@ -1,6 +1,6 @@
-# AI SOC SOAR MVP
+# NetraShield MVP
 
-Low-cost AI SOC automation layer for Wazuh-first deployments, designed to become SIEM-agnostic.
+Low-cost SOC noise-reduction and automation layer for Wazuh-first deployments, designed to become SIEM-agnostic.
 
 ## MVP Goal
 
@@ -138,7 +138,7 @@ soar/             n8n and Shuffle workflow templates
 - Demo runbook: `docs/DAY7_DEMO_RUNBOOK.md`.
 - Browser walkthrough: `demo/video/demo-flow.html`.
 - Screenshot capture script: `scripts/capture_demo_screenshots.mjs`.
-- Importable n8n workflow: `soar/n8n/ai-soc-soar-action.workflow.json`.
+- Importable n8n workflow: `soar/n8n/netrashield-soar-action.workflow.json`.
 
 ## 7-Day Build Plan
 

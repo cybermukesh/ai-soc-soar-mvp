@@ -16,8 +16,8 @@ Run n8n on host port `5679` so it does not conflict with:
 - Wazuh API: `55000`
 - OpenSearch: `9200`
 - Wazuh dashboard: usually `443` or `8443`
-- AI SOC backend: `8000`
-- AI SOC frontend: `5174`
+- NetraShield backend: `8000`
+- NetraShield frontend: `5174`
 
 Recommended quick start:
 
@@ -39,16 +39,16 @@ Option A: import the ready workflow:
 1. Open n8n: `http://<automation-host>:5679`
 2. Create the owner account.
 3. Go to `Workflows` -> `Import from File`.
-4. Import `soar/n8n/ai-soc-soar-action.workflow.json`.
+4. Import `soar/n8n/netrashield-soar-action.workflow.json`.
 5. Activate the workflow.
 6. Copy the production webhook URL:
-   `http://<automation-host>:5679/webhook/ai-soc-soar-action`
+   `http://<automation-host>:5679/webhook/netrashield-soar-action`
 
 Option B: create the workflow manually:
 
 - Webhook node
   - Method: `POST`
-  - Path: `ai-soc-soar-action`
+  - Path: `netrashield-soar-action`
   - Response mode: `Using Respond to Webhook node`
 - Code node
   - Return `status`, `workflow_execution_id`, `ticket_id`, `action`, `incident_id`, and `alert_id`
@@ -68,15 +68,15 @@ Option B: create the workflow manually:
 Add this to `.env` on the machine running the FastAPI backend:
 
 ```bash
-N8N_WEBHOOK_URL=http://<automation-host>:5679/webhook/ai-soc-soar-action
+N8N_WEBHOOK_URL=http://<automation-host>:5679/webhook/netrashield-soar-action
 ```
 
 Restart the backend after saving `.env`.
 
-Smoke test from the AI SOC app host:
+Smoke test from the NetraShield app host:
 
 ```bash
-curl -s -X POST 'http://<automation-host>:5679/webhook/ai-soc-soar-action' \
+curl -s -X POST 'http://<automation-host>:5679/webhook/netrashield-soar-action' \
   -H 'Content-Type: application/json' \
   -d '{"incident_id":"demo-case-1","alert_id":"demo-alert-1","dry_run":true,"payload":{"requested_workflow":"notify"}}' | python3 -m json.tool
 ```

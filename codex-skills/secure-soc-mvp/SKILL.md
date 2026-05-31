@@ -1,6 +1,6 @@
 ---
 name: secure-soc-mvp
-description: Use when reviewing or building security controls for the AI SOC SOAR MVP, including auth, secrets, prompt injection, SOAR approval, tenant-ready data isolation, audit logging, and safe API design.
+description: Use when reviewing or building security controls for the NetraShield MVP, including auth, secrets, prompt injection, SOAR approval, tenant-ready data isolation, audit logging, and safe API design.
 ---
 
 # Secure SOC MVP
