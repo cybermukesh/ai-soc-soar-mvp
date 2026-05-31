@@ -26,6 +26,15 @@ async def check_opensearch_health(
                 f"{base_url}/_cluster/health",
                 auth=(username, password),
             )
+            if response.status_code == 403:
+                index = os.getenv("OPENSEARCH_ALERT_INDEX", "wazuh-alerts-*")
+                probe = await client.post(
+                    f"{base_url}/{index}/_search",
+                    auth=(username, password),
+                    json={"size": 0, "query": {"match_all": {}}},
+                )
+                probe.raise_for_status()
+                return True, "alerts index reachable; cluster health forbidden for read-only user"
             response.raise_for_status()
             payload = response.json()
             status = str(payload.get("status", "unknown"))
