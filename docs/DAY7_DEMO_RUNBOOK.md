@@ -57,6 +57,13 @@ Create a webhook workflow in n8n and copy the production webhook URL into `.env`
 N8N_WEBHOOK_URL=http://<n8n-host>:5678/webhook/<workflow-path>
 ```
 
+Fastest path: import `soar/n8n/ai-soc-soar-action.workflow.json`, activate it,
+and use:
+
+```bash
+N8N_WEBHOOK_URL=http://<n8n-host>:5678/webhook/ai-soc-soar-action
+```
+
 Restart the backend after setting the URL. Non-destructive workflows can dispatch directly. Containment workflows are held for admin approval first.
 
 ## Demo Evidence

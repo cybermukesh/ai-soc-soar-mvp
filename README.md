@@ -133,11 +133,12 @@ soar/             n8n and Shuffle workflow templates
 - `GET /api/v1/automation/workflow-templates`: lists available workflow templates.
 - `POST /api/v1/automation/workflow-templates/{template_id}/trigger`: requests a workflow run with case and alert context.
 - `GET /api/v1/automation/workflow-runs`: shows persisted workflow history, including pending approvals.
-- `POST /api/v1/automation/workflow-runs/{run_id}/approve`: admin approval/reject path for high-impact workflow requests.
+- `POST /api/v1/automation/workflow-runs/{run_id}/approval`: admin approval/reject path for high-impact workflow requests.
 - `PATCH /api/v1/auth/users/{user_id}/role`: admin-only role assignment for `admin`, `analyst`, or `viewer`, with self-demotion blocked.
 - Demo runbook: `docs/DAY7_DEMO_RUNBOOK.md`.
 - Browser walkthrough: `demo/video/demo-flow.html`.
 - Screenshot capture script: `scripts/capture_demo_screenshots.mjs`.
+- Importable n8n workflow: `soar/n8n/ai-soc-soar-action.workflow.json`.
 
 ## 7-Day Build Plan
 

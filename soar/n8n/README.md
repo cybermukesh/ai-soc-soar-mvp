@@ -34,9 +34,26 @@ docker run -d --name n8n --restart unless-stopped \
 
 Create a webhook workflow:
 
-- Method: `POST`
-- Path: `ai-soc-soar-action`
-- Response body:
+Option A: import the ready workflow:
+
+1. Open n8n: `http://<automation-host>:5678`
+2. Create the owner account.
+3. Go to `Workflows` -> `Import from File`.
+4. Import `soar/n8n/ai-soc-soar-action.workflow.json`.
+5. Activate the workflow.
+6. Copy the production webhook URL:
+   `http://<automation-host>:5678/webhook/ai-soc-soar-action`
+
+Option B: create the workflow manually:
+
+- Webhook node
+  - Method: `POST`
+  - Path: `ai-soc-soar-action`
+  - Response mode: `Using Respond to Webhook node`
+- Code node
+  - Return `status`, `workflow_execution_id`, `ticket_id`, `action`, `incident_id`, and `alert_id`
+- Respond to Webhook node
+  - Respond with JSON
 
 ```json
 {
@@ -45,3 +62,35 @@ Create a webhook workflow:
   "ticket_id": ""
 }
 ```
+
+## Connect It To The MVP
+
+Add this to `.env` on the machine running the FastAPI backend:
+
+```bash
+N8N_WEBHOOK_URL=http://<automation-host>:5678/webhook/ai-soc-soar-action
+```
+
+Restart the backend after saving `.env`.
+
+Smoke test from the AI SOC app host:
+
+```bash
+curl -s -X POST 'http://<automation-host>:5678/webhook/ai-soc-soar-action' \
+  -H 'Content-Type: application/json' \
+  -d '{"incident_id":"demo-case-1","alert_id":"demo-alert-1","dry_run":true,"payload":{"requested_workflow":"notify"}}' | python3 -m json.tool
+```
+
+Expected response:
+
+```json
+{
+  "status": "accepted",
+  "workflow_execution_id": "...",
+  "ticket_id": "demo-case-1",
+  "action": "notify"
+}
+```
+
+Containment workflows in the MVP are intentionally held as `pending_approval`
+until an admin approves them from the Automation page.

@@ -7,14 +7,19 @@ def wazuh_configured() -> bool:
     return all(os.getenv(key) for key in ["WAZUH_API_URL", "WAZUH_API_USER", "WAZUH_API_PASSWORD"])
 
 
-async def check_wazuh_health(timeout: float = 10.0) -> tuple[bool, str]:
-    if not wazuh_configured():
+async def check_wazuh_health(
+    timeout: float = 10.0,
+    base_url: str | None = None,
+    username: str | None = None,
+    password: str | None = None,
+) -> tuple[bool, str]:
+    base_url = (base_url or os.getenv("WAZUH_API_URL", "")).rstrip("/")
+    user = username or os.getenv("WAZUH_API_USER", "")
+    password = password or os.getenv("WAZUH_API_PASSWORD", "")
+    if not (base_url and user and password):
         missing = [key for key in ["WAZUH_API_URL", "WAZUH_API_USER", "WAZUH_API_PASSWORD"] if not os.getenv(key)]
-        return False, f"missing env: {', '.join(missing)}"
+        return False, f"missing credentials: {', '.join(missing) if missing else 'base_url/username/password'}"
 
-    base_url = os.environ["WAZUH_API_URL"].rstrip("/")
-    user = os.environ["WAZUH_API_USER"]
-    password = os.environ["WAZUH_API_PASSWORD"]
     try:
         async with httpx.AsyncClient(verify=False, timeout=timeout) as client:
             token_response = await client.get(

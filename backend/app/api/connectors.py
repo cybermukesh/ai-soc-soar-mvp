@@ -145,9 +145,17 @@ async def connector_health(
         ok = False
         detail = "missing base_url/username/password"
     elif name == "wazuh":
-        ok, detail = await check_wazuh_health()
+        ok, detail = await check_wazuh_health(
+            base_url=row.base_url,
+            username=row.username,
+            password=decrypt_secret(row.password_encrypted),
+        )
     elif name == "opensearch":
-        ok, detail = await check_opensearch_health()
+        ok, detail = await check_opensearch_health(
+            base_url=row.base_url,
+            username=row.username,
+            password=decrypt_secret(row.password_encrypted),
+        )
     else:
         ok = True
         detail = "configured"

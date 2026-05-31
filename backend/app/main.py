@@ -11,7 +11,7 @@ from app.api.connectors import router as connectors_router
 from app.api.incidents import router as incidents_router
 from app.api.settings import router as settings_router
 from app.connectors.opensearch import fetch_recent_wazuh_alerts, opensearch_configured
-from app.db.models import AiProviderSetting, Base, ThreatIntelProviderSetting
+from app.db.models import AiProviderSetting, Base, Connector, ThreatIntelProviderSetting
 from app.db.sqlite_store import (
     count_alerts,
     add_local_ioc,
@@ -33,7 +33,7 @@ from app.connectors.wazuh import normalize_wazuh_alert, normalize_wazuh_hits
 from app.models.triage import TriageBatchResponse, TriageFeedbackRequest, TriageHistoryEntry, TriageRequest
 from app.services.alert_store import load_normalized_sample_alerts, summarize_alerts
 from app.services.auth import ensure_admin_seed
-from app.services.crypto import encrypt_secret
+from app.services.crypto import decrypt_secret, encrypt_secret
 from app.services.triage import noise_reduction_summary, triage_alert, triage_alerts, triage_cache_size
 
 app = FastAPI(
@@ -307,8 +307,30 @@ def _seed_platform_settings(db: Session) -> None:
     db.commit()
 
 
+def _connector_credentials(name: str) -> dict[str, str] | None:
+    with SessionLocal() as db:
+        row = db.query(Connector).filter(Connector.name == name, Connector.enabled.is_(True)).first()
+        if not row:
+            return None
+        password = decrypt_secret(row.password_encrypted)
+        if not (row.base_url and row.username and password):
+            return None
+        return {"base_url": row.base_url, "username": row.username, "password": password}
+
+
+def _opensearch_ready() -> bool:
+    return opensearch_configured() or _connector_credentials("opensearch") is not None
+
+
+async def _fetch_recent_wazuh_alerts(limit: int = 25) -> dict:
+    credentials = _connector_credentials("opensearch")
+    if credentials:
+        return await fetch_recent_wazuh_alerts(limit=limit, **credentials)
+    return await fetch_recent_wazuh_alerts(limit=limit)
+
+
 async def _sync_wazuh_from_opensearch(limit: int = 100, triage: bool = True) -> dict:
-    response = await fetch_recent_wazuh_alerts(limit=limit)
+    response = await _fetch_recent_wazuh_alerts(limit=limit)
     alerts = normalize_wazuh_hits(response)
     decisions = triage_alerts(alerts) if triage else []
     for alert in alerts:
@@ -371,7 +393,7 @@ def mvp_status() -> dict:
         "wazuh_pipeline": {
             "sample_alerts": "/alerts/sample",
             "normalized_alerts": "/alerts/normalized",
-            "opensearch_configured": opensearch_configured(),
+            "opensearch_configured": _opensearch_ready(),
             "live_endpoint": "/alerts/wazuh/recent",
         },
         "model_strategy": {
@@ -613,7 +635,7 @@ async def recent_wazuh_alerts(
     limit: int = 25, _: Session = Depends(require_role("admin", "analyst", "viewer"))
 ) -> dict:
     try:
-        response = await fetch_recent_wazuh_alerts(limit=limit)
+        response = await _fetch_recent_wazuh_alerts(limit=limit)
     except RuntimeError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
@@ -656,7 +678,7 @@ def ingestion_status(
         "triage_history": len(list_triage_history(limit=1000)),
         "last_run": runs[0] if runs else None,
         "runs": runs,
-        "live_source": "opensearch:wazuh-alerts" if opensearch_configured() else "not_configured",
+        "live_source": "opensearch:wazuh-alerts" if _opensearch_ready() else "not_configured",
     }
 
 

@@ -1,0 +1,68 @@
+{
+  "name": "AI SOC SOAR Action Intake",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-soc-soar-action",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "ai-soc-webhook",
+      "name": "AI SOC Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 280],
+      "webhookId": "ai-soc-soar-action"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body || $json;\\nconst payload = body.payload || {};\\nconst workflow = payload.requested_workflow || 'unspecified';\\nconst highImpact = workflow === 'containment_approval';\\nreturn [{\\n  json: {\\n    status: 'accepted',\\n    workflow_execution_id: $execution.id,\\n    ticket_id: body.incident_id || body.alert_id || '',\\n    action: workflow,\\n    high_impact: highImpact,\\n    received_at: new Date().toISOString(),\\n    incident_id: body.incident_id || '',\\n    alert_id: body.alert_id || '',\\n    dry_run: body.dry_run !== false\\n  }\\n}];"
+      },
+      "id": "normalize-soar-payload",
+      "name": "Normalize SOAR Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 280]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "respond-accepted",
+      "name": "Respond Accepted",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [780, 280]
+    }
+  ],
+  "connections": {
+    "AI SOC Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize SOAR Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize SOAR Payload": {
+      "main": [
+        [
+          {
+            "node": "Respond Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

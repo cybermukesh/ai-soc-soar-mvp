@@ -217,6 +217,7 @@ It is intentionally detailed and operational (not pitch-level).
 - [x] browser-based walkthrough artifact at `demo/video/demo-flow.html`
 - [x] judge-facing result board narrative for alert reduction, analyst items, and approval-gated SOAR
 - [x] n8n setup command and webhook configuration documented
+- [x] importable n8n webhook workflow added at `soar/n8n/ai-soc-soar-action.workflow.json`
 - [ ] final live screenshot capture from the local browser after the latest frontend restart
 
 ### Security + Reliability

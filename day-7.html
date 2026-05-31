@@ -74,7 +74,7 @@ docker run -d --name n8n --restart unless-stopped \
   -e N8N_PROTOCOL=http \
   -v n8n_data:/home/node/.n8n \
   n8nio/n8n:latest</code></pre>
-        <p>Then set <code>N8N_WEBHOOK_URL=http://&lt;n8n-host&gt;:5678/webhook/&lt;workflow-path&gt;</code> in the backend environment and restart the backend.</p>
+        <p>Import <code>soar/n8n/ai-soc-soar-action.workflow.json</code>, activate it, then set <code>N8N_WEBHOOK_URL=http://&lt;n8n-host&gt;:5678/webhook/ai-soc-soar-action</code> in the backend environment and restart the backend.</p>
       </section>
 
       <section class="panel">
