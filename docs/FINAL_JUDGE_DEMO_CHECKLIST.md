@@ -127,6 +127,9 @@ curl -s -H "Authorization: Bearer $APP_TOKEN" \
 - Wedge: Wazuh-first, self-hosted AI triage for cost-sensitive SOC teams.
 - Differentiator: reduce calls before AI with grouping, local model fallback,
   compact prompts, cache, public IOC enrichment, and case workflow.
+- Core brain: adaptive tuning memory improves grouping and triage reliability
+  as more alerts, analyst feedback, suppression approvals, and case outcomes
+  are ingested.
 - India angle: privacy-aware operations for DPDP-era security monitoring and
   ISO 27001 logging/monitoring evidence.
 - Business: low product price plus customer-owned infra and optional token usage.
