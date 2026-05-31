@@ -159,4 +159,388 @@ reserved only for demo-critical or high-severity summaries when required.
 
 ## Development
 
-Backend and frontend commands will be added as the implementation is built.
+Use the steps below when cloning NetraShield onto the same lab server where
+Wazuh and n8n are running.
+
+### Single-Server Lab Ports
+
+| Component | Default port | Purpose |
+| --- | ---: | --- |
+| Wazuh Dashboard | 443 or 8443 | Wazuh web console |
+| Wazuh API | 55000 | Manager status, agents, and API health |
+| Wazuh Indexer / OpenSearch | 9200 | `wazuh-alerts-*` alert search |
+| NetraShield backend | 8000 | FastAPI API, auth, triage, connectors, SOAR |
+| NetraShield frontend | 5174 | React SOC dashboard |
+| n8n | 5679 -> 5678 | SOAR workflow editor and webhook runtime |
+
+For a public demo, allow only the ports you need from your IP address. For
+production, place the frontend, API, and n8n behind HTTPS and a reverse proxy.
+
+### Prerequisites
+
+- Ubuntu/Debian server with Wazuh all-in-one already installed and healthy.
+- Python 3.11 or newer.
+- Node.js 18 or 20 with npm.
+- Git.
+- Docker if n8n will run as a container.
+- Access to Wazuh API credentials and OpenSearch credentials.
+
+Install common packages on Ubuntu/Debian:
+
+```bash
+sudo apt update
+sudo apt install -y git python3 python3-venv python3-pip nodejs npm docker.io jq curl
+sudo systemctl enable --now docker
+```
+
+If `node -v` is older than Node 18, install Node 20 from NodeSource or your
+preferred package manager before running the frontend.
+
+### Clone The Repository
+
+```bash
+git clone https://github.com/cybermukesh/ai-soc-soar-mvp.git
+cd ai-soc-soar-mvp
+```
+
+### Configure Backend Environment
+
+Create the backend runtime environment file:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and use your own secrets:
+
+```bash
+APP_ENV=development
+API_HOST=0.0.0.0
+API_PORT=8000
+JWT_SECRET=<generate-a-long-random-secret>
+DB_URL=sqlite:///data/runtime/mvp_auth.db
+
+WAZUH_API_URL=https://<wazuh-server-ip>:55000
+WAZUH_API_USER=wazuh-wui
+WAZUH_API_PASSWORD=<wazuh-api-password>
+
+OPENSEARCH_URL=https://<wazuh-server-ip>:9200
+OPENSEARCH_USER=readall
+OPENSEARCH_PASSWORD=<opensearch-password>
+OPENSEARCH_ALERT_INDEX=wazuh-alerts-*
+
+N8N_WEBHOOK_URL=http://<wazuh-server-ip>:5679/webhook/netrashield-soar-action
+
+LLM_PROVIDER=openai
+LLM_MODEL=gpt-4o-mini
+LLM_MAX_INPUT_CHARS=6000
+LLM_MAX_OUTPUT_TOKENS=700
+LLM_CACHE_ENABLED=true
+LLM_TRIAGE_ONLY_MIN_SEVERITY=medium
+OPENAI_API_KEY=<optional-openai-key>
+ANTHROPIC_API_KEY=
+OLLAMA_BASE_URL=http://localhost:11434
+```
+
+Do not commit `.env`. It is intentionally ignored by Git.
+
+For OpenSearch, `readall` is enough for alert fetch in the MVP. It may not be
+allowed to call `_cluster/health`, so NetraShield also validates access by
+querying the alert index. Use `admin` only if you need full cluster-health
+checks.
+
+### Find Wazuh And OpenSearch Credentials
+
+Check the Wazuh dashboard API user:
+
+```bash
+sudo cat /usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml
+```
+
+Test Wazuh API authentication:
+
+```bash
+TOKEN=$(curl -sk -u '<wazuh-api-user>:<wazuh-api-password>' \
+  'https://127.0.0.1:55000/security/user/authenticate?raw=true')
+
+echo "TOKEN_LEN=${#TOKEN}"
+
+curl -sk -H "Authorization: Bearer $TOKEN" \
+  'https://127.0.0.1:55000/manager/status?pretty=true'
+```
+
+If you kept the Wazuh installer archive, extract the generated password file:
+
+```bash
+tar -O -xvf wazuh-install-files.tar wazuh-install-files/wazuh-passwords.txt
+```
+
+If passwords were rotated with the Wazuh password tool, review the output and
+update `.env`, Wazuh dashboard, and Filebeat as required by Wazuh.
+
+### Start The Backend
+
+```bash
+python3 -m venv backend/.venv
+source backend/.venv/bin/activate
+pip install --upgrade pip
+pip install -e backend
+python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --app-dir backend
+```
+
+Backend health check:
+
+```bash
+curl -s http://127.0.0.1:8000/health
+```
+
+Default seeded login for the MVP lab:
+
+```text
+Email: admin@aisocmvp.com
+Password: admin123
+```
+
+Change the default password before using the tool outside a local demo.
+
+### Start The Frontend
+
+Create the frontend environment file:
+
+```bash
+cd frontend
+cp .env.example .env
+```
+
+For local browser access on the same machine:
+
+```bash
+VITE_API_BASE_URL=http://127.0.0.1:8000
+```
+
+For browser access from another laptop or public demo machine:
+
+```bash
+VITE_API_BASE_URL=http://<server-ip>:8000
+```
+
+Run the React dashboard:
+
+```bash
+npm install
+npm run dev -- --host 0.0.0.0 --port 5174
+```
+
+Open:
+
+```text
+http://<server-ip>:5174
+```
+
+### Start n8n For SOAR
+
+Run n8n on host port `5679` so it does not conflict with NetraShield or Wazuh:
+
+```bash
+docker volume create n8n_data
+docker rm -f n8n 2>/dev/null || true
+
+docker run -d --name n8n --restart unless-stopped \
+  -p 0.0.0.0:5679:5678 \
+  -e N8N_HOST=<server-ip> \
+  -e N8N_PORT=5678 \
+  -e N8N_PROTOCOL=http \
+  -e N8N_SECURE_COOKIE=false \
+  -e WEBHOOK_URL=http://<server-ip>:5679/ \
+  -v n8n_data:/home/node/.n8n \
+  n8nio/n8n:latest
+```
+
+`N8N_SECURE_COOKIE=false` is acceptable for the lab HTTP demo only. For
+production, use HTTPS and remove this setting.
+
+Open n8n:
+
+```text
+http://<server-ip>:5679
+```
+
+Create the n8n owner account, then import and activate:
+
+```text
+soar/n8n/netrashield-soar-action.workflow.json
+```
+
+Smoke-test the n8n webhook:
+
+```bash
+curl -s -X POST "http://<server-ip>:5679/webhook/netrashield-soar-action" \
+  -H 'Content-Type: application/json' \
+  -d '{"incident_id":"demo-case-1","alert_id":"demo-alert-1","dry_run":true,"payload":{"requested_workflow":"notify"}}' \
+  | python3 -m json.tool
+```
+
+Expected result includes `"status": "accepted"`.
+
+### Verify NetraShield Connectors
+
+Get a NetraShield API token:
+
+```bash
+APP_TOKEN=$(curl -s -X POST 'http://127.0.0.1:8000/api/v1/auth/login' \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"admin@aisocmvp.com","password":"admin123"}' \
+  | python3 -c 'import sys,json; print(json.load(sys.stdin)["access_token"])')
+
+echo "APP_TOKEN_LEN=${#APP_TOKEN}"
+```
+
+Check Wazuh and OpenSearch from NetraShield:
+
+```bash
+curl -s -H "Authorization: Bearer $APP_TOKEN" \
+  'http://127.0.0.1:8000/api/v1/connectors/wazuh/health' \
+  | python3 -m json.tool
+
+curl -s -H "Authorization: Bearer $APP_TOKEN" \
+  'http://127.0.0.1:8000/api/v1/connectors/opensearch/health' \
+  | python3 -m json.tool
+```
+
+Fetch live Wazuh alerts through OpenSearch:
+
+```bash
+curl -s -H "Authorization: Bearer $APP_TOKEN" \
+  'http://127.0.0.1:8000/alerts/wazuh/recent?limit=3' \
+  | python3 -m json.tool
+```
+
+Sync alerts into the persistent NetraShield database and run triage:
+
+```bash
+curl -s -X POST -H "Authorization: Bearer $APP_TOKEN" \
+  'http://127.0.0.1:8000/api/v1/ingestion/wazuh/sync?limit=10&triage=true' \
+  | python3 -m json.tool
+```
+
+Trigger n8n through NetraShield:
+
+```bash
+curl -s -X POST \
+  -H "Authorization: Bearer $APP_TOKEN" \
+  -H 'Content-Type: application/json' \
+  'http://127.0.0.1:8000/api/v1/automation/workflow-templates/n8n-test-webhook/trigger' \
+  -d '{"incident_id":"demo-case-1","alert_id":"demo-alert-1","dry_run":true,"payload":{"requested_workflow":"notify"}}' \
+  | python3 -m json.tool
+```
+
+### Optional Firewall Rules
+
+For a quick lab, open only the required ports:
+
+```bash
+sudo ufw allow 8000/tcp
+sudo ufw allow 5174/tcp
+sudo ufw allow 5679/tcp
+sudo ufw reload
+```
+
+On a VPS, also check the cloud firewall/security group.
+
+### Troubleshooting
+
+**Frontend opens but API calls fail**
+
+The frontend uses `VITE_API_BASE_URL`. If you open the UI from another machine
+and it is still set to `http://localhost:8000`, the browser will call the
+viewer laptop instead of the server. Set `frontend/.env` to:
+
+```bash
+VITE_API_BASE_URL=http://<server-ip>:8000
+```
+
+Then restart the frontend dev server.
+
+**Firefox shows `SSL_ERROR_RX_RECORD_TOO_LONG` for n8n**
+
+You are opening HTTP n8n with HTTPS. Use:
+
+```text
+http://<server-ip>:5679
+```
+
+For the lab HTTP setup, keep `N8N_SECURE_COOKIE=false`. For production, put n8n
+behind HTTPS.
+
+**n8n port is published but browser cannot connect**
+
+Check the container, logs, listener, and firewall:
+
+```bash
+docker ps --filter name=n8n
+docker logs --tail 80 n8n
+sudo ss -lntp | grep -E '5678|5679'
+curl -I http://127.0.0.1:5679
+curl -I http://<server-ip>:5679
+sudo ufw status
+```
+
+**n8n webhook returns 404**
+
+Activate the imported workflow and use the production webhook path:
+
+```text
+/webhook/netrashield-soar-action
+```
+
+The test URL shown inside n8n is different from the production webhook URL.
+
+**Wazuh API returns unauthorized**
+
+Generate a token directly against Wazuh first:
+
+```bash
+TOKEN=$(curl -sk -u '<wazuh-api-user>:<wazuh-api-password>' \
+  'https://127.0.0.1:55000/security/user/authenticate?raw=true')
+echo "TOKEN_LEN=${#TOKEN}"
+```
+
+If the token length is empty or the manager status call fails, update the Wazuh
+API user/password in `.env`.
+
+**OpenSearch returns 401**
+
+The OpenSearch username/password is wrong or has changed. Re-check the Wazuh
+password output and update `OPENSEARCH_USER` and `OPENSEARCH_PASSWORD`.
+
+**OpenSearch cluster health returns 403**
+
+This is normal for low-privilege users like `readall`. NetraShield can still
+fetch alerts if the user can read `wazuh-alerts-*`. Use `admin` only if the
+demo requires full cluster-health checks.
+
+**No live alerts appear**
+
+Confirm Wazuh is indexing alerts:
+
+```bash
+curl -sk -u '<opensearch-user>:<opensearch-password>' \
+  'https://127.0.0.1:9200/wazuh-alerts-*/_search?size=1&pretty'
+```
+
+Then run the NetraShield sync endpoint again with `triage=true`.
+
+**Database appears empty after restart**
+
+The MVP uses a local SQLite database by default. Do not delete files under
+`data/runtime/`. For production, move to Postgres and set the database URL in
+the backend environment.
+
+### Security Notes
+
+- Rotate any Wazuh, OpenSearch, n8n, or LLM secrets that were pasted into chat,
+  logs, screenshots, or terminal history.
+- Keep `.env` out of Git.
+- Use least-privilege OpenSearch users for alert fetch.
+- Keep destructive SOAR actions behind RBAC and approval.
+- Use HTTPS before exposing the demo to anyone beyond the lab.

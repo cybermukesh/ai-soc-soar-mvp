@@ -3,7 +3,7 @@ import { BarChart3, Bot, ClipboardList, LockKeyhole, Play, Plug, Search, Setting
 import { createRoot } from "react-dom/client";
 import "./styles/app.css";
 
-const API = "http://localhost:8000";
+const API = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 type User = { id: number; email: string; full_name: string; role: "admin" | "analyst" | "viewer"; is_active: boolean };
 type RoleName = User["role"];
