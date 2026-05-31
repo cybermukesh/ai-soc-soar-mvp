@@ -23,6 +23,20 @@ Core claim:
 - NetraShield targets 70-80% L1 queue reduction for repetitive alert categories
   after analyst validation and tuning.
 
+Realistic proof points to quote:
+
+- Industry summaries cite roughly 11,000 alerts per day in large SOCs and a
+  44% false-positive share in that alert-flood example.
+- Public alert-fatigue writeups commonly describe 40-60% false-positive alert
+  ranges.
+- IBM reported the average cost of a data breach in India reached INR 195
+  million in 2024.
+- AACT research reported 61% alert-queue reduction over six months with a low
+  false-negative rate, showing that feedback-driven triage loops can materially
+  reduce analyst load.
+- OpenAI mini-model pricing makes compact structured triage economically viable,
+  especially when repeated alerts are cached or handled by local Ollama/Mistral.
+
 ## 2. Clone And Configure
 
 ```bash
