@@ -240,6 +240,15 @@ LLM_TRIAGE_ONLY_MIN_SEVERITY=medium
 OPENAI_API_KEY=<optional-openai-key>
 ANTHROPIC_API_KEY=
 OLLAMA_BASE_URL=http://localhost:11434
+
+VIRUSTOTAL_API_KEY=<optional-virustotal-key>
+VIRUSTOTAL_BASE_URL=https://www.virustotal.com/api/v3
+ABUSEIPDB_API_KEY=<optional-abuseipdb-key>
+ABUSEIPDB_BASE_URL=https://api.abuseipdb.com/api/v2
+OTX_API_KEY=<optional-otx-key>
+OTX_BASE_URL=https://otx.alienvault.com/api/v1
+MISP_API_KEY=<optional-misp-key>
+MISP_BASE_URL=<optional-misp-url>
 ```
 
 Do not commit `.env`. It is intentionally ignored by Git.
@@ -433,6 +442,30 @@ curl -s -X POST \
   -d '{"incident_id":"demo-case-1","alert_id":"demo-alert-1","dry_run":true,"payload":{"requested_workflow":"notify"}}' \
   | python3 -m json.tool
 ```
+
+### Configure Threat Intel Providers
+
+Threat-intel secrets can be configured in either place:
+
+- NetraShield UI: `AI & Intel` -> `Threat Intel`.
+- Server `.env`: `VIRUSTOTAL_API_KEY`, `ABUSEIPDB_API_KEY`, `OTX_API_KEY`,
+  `MISP_API_KEY`, and `MISP_BASE_URL`.
+
+The enrichment endpoint uses enabled provider settings from the database and
+keeps secrets masked in the UI. External lookups send only public IPs, public
+domains, URLs, and hashes. Private IPs, usernames, and internal hostnames remain
+local.
+
+After saving provider keys, enrich a stored alert:
+
+```bash
+curl -s -H "Authorization: Bearer $APP_TOKEN" \
+  'http://127.0.0.1:8000/api/v1/threat-intel/enrich-alert/<alert-id>' \
+  | python3 -m json.tool
+```
+
+Expected result includes `local_ioc`, `providers`, `external_match_count`,
+`max_external_score`, and `privacy_guardrail`.
 
 ### Optional Firewall Rules
 

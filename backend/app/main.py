@@ -28,13 +28,14 @@ from app.db.sqlite_store import (
     upsert_correlation_groups,
     upsert_triage,
 )
-from app.db.session import engine, SessionLocal
+from app.db.session import engine, get_db, SessionLocal
 from app.connectors.wazuh import normalize_wazuh_alert, normalize_wazuh_hits
 from app.models.triage import TriageBatchResponse, TriageFeedbackRequest, TriageHistoryEntry, TriageRequest
 from app.services.alert_store import load_normalized_sample_alerts, summarize_alerts
 from app.services.auth import ensure_admin_seed
 from app.services.crypto import decrypt_secret, encrypt_secret
 from app.services.triage import noise_reduction_summary, triage_alert, triage_alerts, triage_cache_size
+from app.services.threat_intel import enrich_alert_with_external_intel
 
 app = FastAPI(
     title="NetraShield MVP",
@@ -294,16 +295,47 @@ def _seed_platform_settings(db: Session) -> None:
             last_status="seeded",
         )
         db.add(row)
-    for provider in ("virustotal", "abuseipdb", "otx", "misp", "local_ioc"):
-        if db.query(ThreatIntelProviderSetting).filter(ThreatIntelProviderSetting.provider == provider).first():
-            continue
-        db.add(
-            ThreatIntelProviderSetting(
-                provider=provider,
-                enabled=provider == "local_ioc",
-                last_status="seeded",
-            )
+    intel_defaults = [
+        {
+            "provider": "virustotal",
+            "api_key": os.getenv("VIRUSTOTAL_API_KEY", ""),
+            "base_url": os.getenv("VIRUSTOTAL_BASE_URL", "https://www.virustotal.com/api/v3"),
+        },
+        {
+            "provider": "abuseipdb",
+            "api_key": os.getenv("ABUSEIPDB_API_KEY", ""),
+            "base_url": os.getenv("ABUSEIPDB_BASE_URL", "https://api.abuseipdb.com/api/v2"),
+        },
+        {
+            "provider": "otx",
+            "api_key": os.getenv("OTX_API_KEY", ""),
+            "base_url": os.getenv("OTX_BASE_URL", "https://otx.alienvault.com/api/v1"),
+        },
+        {
+            "provider": "misp",
+            "api_key": os.getenv("MISP_API_KEY", ""),
+            "base_url": os.getenv("MISP_BASE_URL", ""),
+        },
+        {"provider": "local_ioc", "api_key": "", "base_url": ""},
+    ]
+    for item in intel_defaults:
+        row = (
+            db.query(ThreatIntelProviderSetting)
+            .filter(ThreatIntelProviderSetting.provider == item["provider"])
+            .first()
         )
+        if not row:
+            row = ThreatIntelProviderSetting(provider=item["provider"])
+            db.add(row)
+        if item["base_url"] and not row.base_url:
+            row.base_url = item["base_url"]
+        if item["api_key"] and not row.api_key_encrypted:
+            row.api_key_encrypted = encrypt_secret(item["api_key"])
+            row.api_key_masked = _mask_secret(item["api_key"])
+            row.enabled = True
+        if item["provider"] == "local_ioc":
+            row.enabled = True
+        row.last_status = row.last_status or "seeded"
     db.commit()
 
 
@@ -602,14 +634,22 @@ def threat_intel_add_local_ioc(
 
 
 @app.get("/api/v1/threat-intel/enrich-alert/{alert_id}")
-def threat_intel_enrich_alert(
+async def threat_intel_enrich_alert(
     alert_id: str,
+    db: Session = Depends(get_db),
     _: Session = Depends(require_role("admin", "analyst", "viewer")),
 ) -> dict:
     matches = [alert for alert in list_alerts(limit=1000) if alert.alert_id == alert_id]
     if not matches:
         raise HTTPException(status_code=404, detail="Alert not found")
-    return enrich_alert_with_local_iocs(matches[0])
+    local = enrich_alert_with_local_iocs(matches[0])
+    external = await enrich_alert_with_external_intel(matches[0], db)
+    return {
+        "alert_id": matches[0].alert_id,
+        "provider": "multi_intel",
+        "local_ioc": local,
+        **external,
+    }
 
 
 @app.post("/triage/feedback")

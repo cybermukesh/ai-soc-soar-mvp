@@ -982,7 +982,7 @@ function App() {
                         <pre>{JSON.stringify(alert.raw_event, null, 2)}</pre>
                       </article>
                       <article>
-                        <button onClick={() => enrichSelectedAlert(alert.alert_id)}>Run local IOC enrichment</button>
+                        <button onClick={() => enrichSelectedAlert(alert.alert_id)}>Run threat intel enrichment</button>
                         {enrichmentResult?.alert_id === alert.alert_id || enrichmentResult?.error ? (
                           <pre className="command-box">{JSON.stringify(enrichmentResult, null, 2)}</pre>
                         ) : null}
