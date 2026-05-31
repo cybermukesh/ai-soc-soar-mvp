@@ -43,7 +43,7 @@ Run n8n on the Wazuh/lab host or another lab host:
 ```bash
 docker volume create n8n_data
 docker run -d --name n8n --restart unless-stopped \
-  -p 5678:5678 \
+  -p 5679:5678 \
   -e N8N_HOST=0.0.0.0 \
   -e N8N_PORT=5678 \
   -e N8N_PROTOCOL=http \
@@ -54,14 +54,14 @@ docker run -d --name n8n --restart unless-stopped \
 Create a webhook workflow in n8n and copy the production webhook URL into `.env`:
 
 ```bash
-N8N_WEBHOOK_URL=http://<n8n-host>:5678/webhook/<workflow-path>
+N8N_WEBHOOK_URL=http://<n8n-host>:5679/webhook/<workflow-path>
 ```
 
 Fastest path: import `soar/n8n/ai-soc-soar-action.workflow.json`, activate it,
 and use:
 
 ```bash
-N8N_WEBHOOK_URL=http://<n8n-host>:5678/webhook/ai-soc-soar-action
+N8N_WEBHOOK_URL=http://<n8n-host>:5679/webhook/ai-soc-soar-action
 ```
 
 Restart the backend after setting the URL. Non-destructive workflows can dispatch directly. Containment workflows are held for admin approval first.

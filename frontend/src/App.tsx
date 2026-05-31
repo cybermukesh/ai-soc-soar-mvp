@@ -1246,14 +1246,14 @@ function App() {
                 <h3>n8n Setup on Wazuh Machine</h3>
                 <ul className="check-list">
                   <li>Install Docker and Docker Compose plugin.</li>
-                  <li>Run n8n on a non-conflicting port, recommended <code>5678</code>.</li>
+                  <li>Run n8n on a non-conflicting port, recommended <code>5679</code>.</li>
                   <li>Create a webhook workflow that accepts incident JSON from this app.</li>
                   <li>Return a JSON response with status, ticket id, and workflow execution id.</li>
                   <li>Share the webhook URL so it can be saved as <code>N8N_WEBHOOK_URL</code> or later into the app settings.</li>
                 </ul>
                 <pre className="command-box">{`docker volume create n8n_data
 docker run -d --name n8n --restart unless-stopped \\
-  -p 5678:5678 \\
+  -p 5679:5678 \\
   -e N8N_HOST=0.0.0.0 \\
   -e N8N_PORT=5678 \\
   -e N8N_PROTOCOL=http \\

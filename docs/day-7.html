@@ -68,13 +68,13 @@
         <p>Install n8n on the lab host when live SOAR dispatch is required. The MVP already stores connector state and run history; it only needs the webhook URL.</p>
         <pre><code>docker volume create n8n_data
 docker run -d --name n8n --restart unless-stopped \
-  -p 5678:5678 \
+  -p 5679:5678 \
   -e N8N_HOST=0.0.0.0 \
   -e N8N_PORT=5678 \
   -e N8N_PROTOCOL=http \
   -v n8n_data:/home/node/.n8n \
   n8nio/n8n:latest</code></pre>
-        <p>Import <code>soar/n8n/ai-soc-soar-action.workflow.json</code>, activate it, then set <code>N8N_WEBHOOK_URL=http://&lt;n8n-host&gt;:5678/webhook/ai-soc-soar-action</code> in the backend environment and restart the backend.</p>
+        <p>Import <code>soar/n8n/ai-soc-soar-action.workflow.json</code>, activate it, then set <code>N8N_WEBHOOK_URL=http://&lt;n8n-host&gt;:5679/webhook/ai-soc-soar-action</code> in the backend environment and restart the backend.</p>
       </section>
 
       <section class="panel">
