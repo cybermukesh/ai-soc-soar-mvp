@@ -136,6 +136,8 @@ soar/             n8n and Shuffle workflow templates
 - `POST /api/v1/automation/workflow-runs/{run_id}/approval`: admin approval/reject path for high-impact workflow requests.
 - `PATCH /api/v1/auth/users/{user_id}/role`: admin-only role assignment for `admin`, `analyst`, or `viewer`, with self-demotion blocked.
 - Demo runbook: `docs/DAY7_DEMO_RUNBOOK.md`.
+- Final judge checklist: `docs/FINAL_JUDGE_DEMO_CHECKLIST.md`.
+- Editable judge pitch deck: `docs/pitch/NetraShield_MVP_Judge_Deck.pptx`.
 - Browser walkthrough: `demo/video/demo-flow.html`.
 - Screenshot capture script: `scripts/capture_demo_screenshots.mjs`.
 - Importable n8n workflow: `soar/n8n/netrashield-soar-action.workflow.json`.
